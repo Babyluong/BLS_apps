@@ -265,12 +265,132 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
   // Load question statistics
   const loadQuestionStatistics = useCallback(async () => {
     try {
-      // Your existing loadQuestionStatistics logic here
-      // This would be the same as the original implementation
+      console.log('🔍 DEBUG: loadQuestionStatistics called');
+      
+      // Load pretest questions
+      const { data: pretestQuestions } = await supabase
+        .from("questions")
+        .select("*")
+        .eq("soalan_set", "Pre_Test")
+        .limit(30);
+        
+      console.log(`🔍 DEBUG: Found ${pretestQuestions?.length || 0} pretest questions`);
+      
+      // Load posttest questions - get all sets first, then filter based on actual usage
+      const { data: allPosttestQuestions } = await supabase
+        .from("questions")
+        .select("*")
+        .in("soalan_set", ["SET_A", "SET_B", "SET_C"])
+        .limit(90);
+
+      // Get all quiz sessions to determine which sets were actually used
+      const { data: allQuizSessions } = await supabase
+        .from("quiz_sessions")
+        .select("answers")
+        .eq("quiz_key", "posttest")
+        .eq("status", "submitted");
+
+      // Extract which sets were actually answered
+      const usedSets = new Set();
+      if (allQuizSessions) {
+        allQuizSessions.forEach(session => {
+          if (session.answers?._selected_set) {
+            usedSets.add(session.answers._selected_set);
+          }
+        });
+      }
+
+      // Filter questions to only include sets that were actually answered
+      const posttestQuestions = allPosttestQuestions?.filter(q => 
+        usedSets.has(q.soalan_set)
+      ) || [];
+
+      // Calculate statistics for pretest
+      if (pretestQuestions && pretestQuestions.length > 0) {
+        console.log('🔍 DEBUG: About to calculate pretest statistics');
+        const pretestStats = await calculateQuestionStatistics('pretest', pretestQuestions);
+        console.log('🔍 DEBUG: Pretest statistics calculated:', pretestStats.length);
+        setPretestStats(pretestStats);
+      } else {
+        console.log('🔍 DEBUG: No pretest questions found or questions array is empty');
+        setPretestStats([]);
+      }
+
+      // Calculate statistics for posttest
+      if (posttestQuestions && posttestQuestions.length > 0) {
+        console.log('🔍 DEBUG: About to calculate posttest statistics');
+        const posttestStats = await calculateQuestionStatistics('posttest', posttestQuestions);
+        console.log('🔍 DEBUG: Posttest statistics calculated:', posttestStats.length);
+        setPosttestStats(posttestStats);
+      } else {
+        console.log('🔍 DEBUG: No posttest questions found or questions array is empty');
+        setPosttestStats([]);
+      }
     } catch (err) {
       console.error('Error loading question statistics:', err);
+      setPretestStats([]);
+      setPosttestStats([]);
     }
   }, []);
+
+  // Calculate statistics for questions
+  const calculateQuestionStatistics = async (quizType, questions) => {
+    try {
+      console.log(`🔍 DEBUG: calculateQuestionStatistics called for ${quizType} with ${questions.length} questions`);
+      
+      // Get all quiz sessions for this quiz type
+      const { data: quizSessions } = await supabase
+        .from("quiz_sessions")
+        .select("answers, score, total_questions")
+        .eq("quiz_key", quizType)
+        .eq("status", "submitted");
+
+      if (!quizSessions || quizSessions.length === 0) {
+        console.log(`🔍 DEBUG: No quiz sessions found for ${quizType}`);
+        return [];
+      }
+
+      console.log(`🔍 DEBUG: Found ${quizSessions.length} quiz sessions for ${quizType}`);
+
+      // Process each question
+      const questionStats = questions.map(question => {
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let totalAttempts = 0;
+
+        quizSessions.forEach(session => {
+          if (session.answers && session.answers[question.id]) {
+            totalAttempts++;
+            if (session.answers[question.id] === question.correct_answer) {
+              correctCount++;
+            } else {
+              incorrectCount++;
+            }
+          }
+        });
+
+        const accuracy = totalAttempts > 0 ? (correctCount / totalAttempts) * 100 : 0;
+
+        return {
+          id: question.id,
+          questionNumber: question.question_number,
+          question: question.question,
+          correctAnswer: question.correct_answer,
+          correctCount,
+          incorrectCount,
+          totalAttempts,
+          accuracy: Math.round(accuracy * 100) / 100
+        };
+      });
+
+      console.log(`🔍 DEBUG: Calculated statistics for ${questionStats.length} questions in ${quizType}`);
+      return questionStats;
+
+    } catch (error) {
+      console.error(`Error calculating question statistics for ${quizType}:`, error);
+      return [];
+    }
+  };
 
   // Refresh handler
   const onRefresh = useCallback(async () => {

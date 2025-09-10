@@ -777,6 +777,13 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
 
   return (
     <LuxuryShell title="BLS Results - All Participants" onSignOut={onSignOut} onBack={onBack}>
+      {/* DEBUG INFO */}
+      <View style={{backgroundColor: 'red', padding: 10, margin: 5}}>
+        <Text style={{color: 'white', fontSize: 16, fontWeight: 'bold'}}>
+          DEBUG: Results={results.length} | Loading={loading ? 'YES' : 'NO'} | Error={error || 'None'}
+        </Text>
+      </View>
+      
       <View style={styles.container}>
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>

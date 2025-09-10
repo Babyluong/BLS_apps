@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   View, StatusBar, SafeAreaView, StyleSheet, Animated, Easing,
-  Text, Alert, ActivityIndicator
+  Text, Alert, ActivityIndicator, Platform
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import supabase from "./services/supabase";
@@ -40,38 +40,38 @@ class ErrorBoundary extends React.Component {
 }
 
 // Screens
-import LoginScreen from "./screens/LoginScreen";
-import AdminHomeScreen from "./screens/AdminHomeScreen";
-import AdminMenuScreen from "./screens/AdminMenuScreen";
-import AddStaffScreen from "./screens/AddStaffScreen";
-import AddUserScreen from "./screens/AddUserScreen";
-import ListStaffScreen from "./screens/ListStaffScreen";
-import ListUsersScreen from "./screens/ListUsersScreen";
-import EditProfilesScreen from "./screens/EditProfilesScreen";
-import DeleteProfilesScreen from "./screens/DeleteProfilesScreen";
-import AdminToolsScreen from "./screens/AdminToolsScreen";
-import ActivityLogsScreen from "./screens/ActivityLogsScreen";
-import StaffHomeScreen from "./screens/StaffHomeScreen";
-import UserHomeScreen from "./screens/UserHomeScreen";
-import OneTapImportUsersScreen from "./screens/OneTapImportUsersScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import AdminHomeScreen from "./src/screens/AdminHomeScreen";
+import AdminMenuScreen from "./src/screens/AdminMenuScreen";
+import AddStaffScreen from "./src/screens/AddStaffScreen";
+import AddUserScreen from "./src/screens/AddUserScreen";
+import ListStaffScreen from "./src/screens/ListStaffScreen";
+import ListUsersScreen from "./src/screens/ListUsersScreen";
+import EditProfilesScreen from "./src/screens/EditProfilesScreen";
+import DeleteProfilesScreen from "./src/screens/DeleteProfilesScreen";
+import AdminToolsScreen from "./src/screens/AdminToolsScreen";
+import ActivityLogsScreen from "./src/screens/ActivityLogsScreen";
+import StaffHomeScreen from "./src/screens/StaffHomeScreen";
+import UserHomeScreen from "./src/screens/UserHomeScreen";
+import OneTapImportUsersScreen from "./src/screens/OneTapImportUsersScreen";
 
 // Questions (keep separate from profiles)
-import OneTapImportQuestionsScreen from "./screens/OneTapImportQuestionsScreen";
-import EditQuestionsScreen from "./screens/EditQuestionsScreen";
+import OneTapImportQuestionsScreen from "./src/screens/OneTapImportQuestionsScreen";
+import EditQuestionsScreen from "./src/screens/EditQuestionsScreen";
 
 // NEW: BLS Test + Pre/Post
-import BLSTestScreen from "./screens/BLSTestScreen";
-import BLSChecklistScreen from "./screens/BLSChecklistScreen";
-import BLSChecklistEditScreen from "./screens/BLSChecklistEditScreen";
-import BLSResultsScreen from "./screens/BLSResultsScreen";
-import QuizResultsScreen from "./screens/QuizResultsScreen";
-import OneManCPR from "./screens/OneManCPR";
-import TwoManCPR from "./screens/TwoManCPR";
-import InfantCPR from "./screens/InfantCPR";
-import AdultChoking from "./screens/AdultChoking";
-import InfantChoking from "./screens/InfantChoking";
-import PreTestQuestionsScreen from "./screens/PreTestQuestionsScreen";
-import PostTestQuestionsScreen from "./screens/PostTestQuestionsScreen";
+import BLSTestScreen from "./src/screens/BLSTestScreen";
+import BLSChecklistScreen from "./src/screens/BLSChecklistScreen";
+import BLSChecklistEditScreen from "./src/screens/BLSChecklistEditScreen";
+import BLSResultsScreen from "./src/screens/BLSResultsScreen";
+import QuizResultsScreen from "./src/screens/QuizResultsScreen";
+import OneManCPR from "./src/screens/OneManCPR";
+import TwoManCPR from "./src/screens/TwoManCPR";
+import InfantCPR from "./src/screens/InfantCPR";
+import AdultChoking from "./src/screens/AdultChoking";
+import InfantChoking from "./src/screens/InfantChoking";
+import PreTestQuestionsScreen from "./src/screens/PreTestQuestionsScreen";
+import PostTestQuestionsScreen from "./src/screens/PostTestQuestionsScreen";
 
 export default function App() {
   const [screen, setScreen] = useState("login");
@@ -255,7 +255,7 @@ export default function App() {
     } catch {}
     try {
       await supabase.functions.invoke("admin_create_user", {
-        body: { full_name: fullName, ic: passwordIC, email, role: "user", job_position: null },
+        body: { full_name: fullName, ic: passwordIC, email, role: "user", jawatan: null },
       });
     } catch {}
     const last = await supabase.auth.signInWithPassword({ email, password: passwordIC });
@@ -273,16 +273,53 @@ export default function App() {
     
     console.log("📊 All Profiles:", { allProfiles, profilesError });
     
-    console.log("🔍 DEBUG: Checking all users...");
+    console.log("🔍 DEBUG: Checking all users [CACHE_FIXED]...");
     const { data: allUsers, error: usersError } = await supabase
-      .from("users")
+      .from("profiles")
       .select("full_name, ic, jawatan")
       .order("full_name");
     
     console.log("📊 All Users:", { allUsers, usersError });
   }, []);
 
-  // ===== Memoized Login (IC-first) — NO local-admin bypass (real session = lists work with RLS) =====
+  // ===== iOS-compatible string normalization =====
+  const normalizeString = useCallback((str = "") => {
+    if (!str) return "";
+    return String(str)
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/[^\w\s]/g, "") // Remove special characters
+      .toUpperCase();
+  }, []);
+
+  // ===== More flexible name matching for iOS =====
+  const isNameMatch = useCallback((inputName, dbName) => {
+    if (!inputName || !dbName) return false;
+    
+    const normalizedInput = normalizeString(inputName);
+    const normalizedDb = normalizeString(dbName);
+    
+    // Exact match
+    if (normalizedInput === normalizedDb) return true;
+    
+    // Check if input name contains first part of DB name or vice versa
+    const inputParts = normalizedInput.split(" ");
+    const dbParts = normalizedDb.split(" ");
+    
+    // Check if any part matches
+    for (const inputPart of inputParts) {
+      for (const dbPart of dbParts) {
+        if (inputPart.length > 2 && dbPart.length > 2 && 
+            (inputPart.includes(dbPart) || dbPart.includes(inputPart))) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }, [normalizeString]);
+
+  // ===== Memoized Login (IC-first) — iOS-compatible =====
   const handleLogin = useCallback(async ({ name, ic }) => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
@@ -295,12 +332,14 @@ export default function App() {
     const isAdmin = isAdminByCreds({ fullName, ic: passwordIC, email });
 
     console.log("🚀 App.js Login Debug:", { 
+      platform: Platform?.OS || 'unknown',
       name, 
       ic, 
       fullName, 
       passwordIC, 
       email, 
-      isAdmin 
+      isAdmin,
+      normalizedName: normalizeString(fullName)
     });
 
     // Debug: Check database contents
@@ -328,11 +367,11 @@ export default function App() {
 
       // 2) Directory check (name+IC exist in users or profiles table)
       const wantName = fullName.toUpperCase();
-      console.log("🔍 App.js Database Check:", { wantName, passwordIC });
+      console.log("🔍 App.js Database Check [V2.0 - FIXED]:", { wantName, passwordIC });
       
-    // Check users table for regular users
+    // Check users table for regular users [FORCE_RELOAD_2025]
     const { data: userData, error: userError } = await supabase
-      .from("users")
+      .from("profiles")
       .select("full_name, ic, jawatan")
       .eq("ic", passwordIC)
       .single();
@@ -365,32 +404,45 @@ export default function App() {
     
     console.log("🔍 App.js Similar Names:", { similarNameData, similarNameError });
 
-    // Check if user exists in either table and name matches
-    const userExists = userData && String(userData.full_name || "").toUpperCase() === wantName;
-    const staffExists = staffData && String(staffData.full_name || "").toUpperCase() === wantName;
-    
-    // Debug: Let's also try more flexible matching
-    const userExistsFlexible = userData && String(userData.full_name || "").toUpperCase().includes(fullName.split(' ')[0].toUpperCase());
-    const staffExistsFlexible = staffData && String(staffData.full_name || "").toUpperCase().includes(fullName.split(' ')[0].toUpperCase());
+    // Use flexible name matching for iOS compatibility
+    const userExists = userData && isNameMatch(fullName, userData.full_name);
+    const staffExists = staffData && isNameMatch(fullName, staffData.full_name);
     
     console.log("🔍 App.js Name Matching Debug:", {
       wantName,
-      userDataName: userData?.full_name?.toUpperCase(),
-      staffDataName: staffData?.full_name?.toUpperCase(),
+      userDataName: userData?.full_name,
+      staffDataName: staffData?.full_name,
       userExists,
       staffExists,
-      userExistsFlexible,
-      staffExistsFlexible
+      inputName: fullName,
+      normalizedInput: normalizeString(fullName),
+      normalizedUserDb: userData ? normalizeString(userData.full_name) : null,
+      normalizedStaffDb: staffData ? normalizeString(staffData.full_name) : null
     });
 
-    if (!userExists && !staffExists && !userExistsFlexible && !staffExistsFlexible) {
-      setLoginError("User not found. Please contact administrator to add user to system.");
+    if (!userExists && !staffExists) {
+      // Try to find similar names for better error message
+      const { data: similarUsers } = await supabase
+        .from("profiles")
+        .select("full_name, ic")
+        .ilike("full_name", `%${fullName.split(' ')[0]}%`)
+        .limit(3);
+      
+      const { data: similarStaff } = await supabase
+        .from("profiles")
+        .select("full_name, ic")
+        .ilike("full_name", `%${fullName.split(' ')[0]}%`)
+        .limit(3);
+      
+      console.log("🔍 Similar names found:", { similarUsers, similarStaff });
+      
+      setLoginError(`User not found. Please check your name and IC number.${Platform?.OS === 'ios' ? ' (iOS)' : ''}`);
       setIsLoggingIn(false);
       return;
     }
 
-    // Determine user role based on which table they exist in (use flexible matching as fallback)
-    const isStaff = staffExists || staffExistsFlexible;
+    // Determine user role based on which table they exist in
+    const isStaff = staffExists;
 
       // 3) Provision → sign-in
       const authUser = await provisionAndSignIn({ email, passwordIC, fullName });

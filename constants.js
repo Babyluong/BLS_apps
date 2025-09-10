@@ -2,8 +2,11 @@
 export const BRAND1 = "#c8aa6e";
 export const BRAND2 = "#e7d6a8";
 
-// Special Admin (local override)
-export const ADMIN = { name: "AMRI AMIT", ic: "940120126733" };
+// Admin user data
+export const ADMIN = {
+  name: "AMRI AMIT",
+  ic: "940120126733"
+};
 
 // Job positions for Add Staff
 export const JOB_POSITIONS = [

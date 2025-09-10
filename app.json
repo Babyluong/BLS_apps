@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "bls",
-    "slug": "snack-cb11accc-db0f-4c6f-a9d6-b7cb35bdc8d7",
+    "slug": "snack-a5ea476c-e2ed-46ff-8389-02750153b1e8",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,17 +13,27 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.babyluong.snacka5ea476ce2ed46ff838902750153b1e8",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.babyluong.snacka5ea476ce2ed46ff838902750153b1e8"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "52aa5ac8-eef5-4e56-a3d7-1c5b9cb6c6d6"
+      }
     }
   }
 }

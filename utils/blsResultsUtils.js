@@ -215,8 +215,11 @@ export const calculateDashboardStats = (allResults) => {
   }
 
   // Calculate highest scores by category and test type
+  console.log("🔍 DEBUG: All results categories:", allResults.map(r => ({ name: r.participantName, category: r.category })));
   const clinicalResults = allResults.filter(r => r.category === 'clinical');
   const nonClinicalResults = allResults.filter(r => r.category === 'non-clinical');
+  console.log("🔍 DEBUG: Clinical results count:", clinicalResults.length);
+  console.log("🔍 DEBUG: Non-clinical results count:", nonClinicalResults.length);
 
   const clinicalPreTestScores = clinicalResults.filter(r => r.preTestScore !== null).map(r => r.preTestScore);
   const clinicalPostTestScores = clinicalResults.filter(r => r.postTestScore !== null).map(r => r.postTestScore);
@@ -251,6 +254,8 @@ export const calculateDashboardStats = (allResults) => {
   // Calculate additional dashboard metrics
   const clinicalCount = allResults.filter(r => r.category === 'clinical').length;
   const nonClinicalCount = allResults.filter(r => r.category === 'non-clinical').length;
+  console.log("🔍 DEBUG: Clinical count:", clinicalCount);
+  console.log("🔍 DEBUG: Non-clinical count:", nonClinicalCount);
   
   // Calculate certified count safely
   let certifiedCount = 0;

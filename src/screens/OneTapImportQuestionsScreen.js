@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import LuxuryShell from "../components/LuxuryShell";
-import { BRAND1, BRAND2 } from "../constants";
+import { BRAND1, BRAND2 } from "../../constants";
 import supabase from "../services/supabase";
 
 import {

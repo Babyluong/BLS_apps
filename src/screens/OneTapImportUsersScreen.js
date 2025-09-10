@@ -9,7 +9,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import LuxuryShell from "../components/LuxuryShell";
-import { BRAND1, BRAND2 } from "../constants";
+import { BRAND1, BRAND2 } from "../../constants";
 import supabase from "../services/supabase";
 
 /* ===================== Normalization Helpers ===================== */

@@ -14,7 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import LuxuryShell from "../components/LuxuryShell";
 import supabase from "../services/supabase";
-import { BRAND1, BRAND2 } from "../constants";
+import { BRAND1, BRAND2 } from "../../constants";
 import ModalFixed from "../components/ModalFixed";
 
 // ===== Master lists =====

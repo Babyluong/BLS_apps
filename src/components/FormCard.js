@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { BRAND1, BRAND2 } from "../constants";
+import { BRAND1, BRAND2 } from "../../constants";
 
 const { width } = Dimensions.get("window");
 

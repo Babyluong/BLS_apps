@@ -2,7 +2,7 @@
 import React from "react";
 import { View, Text, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { BRAND1, BRAND2 } from "../constants";
+import { BRAND1, BRAND2 } from "../../constants";
 
 export default function LuxuryShell({ title, children, onSignOut, onBack }) {
   return (

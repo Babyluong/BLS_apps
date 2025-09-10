@@ -58,6 +58,16 @@ export const getScoreTextColor = (score, category, testType) => {
   return score < threshold ? '#dc3545' : '#28a745'; // Red if below threshold, green if above
 };
 
+// Check if pre-test score is passing (green) based on category thresholds
+export const isPreTestPassing = (score, category) => {
+  if (score === null) return false; // No score means not passing
+  
+  const isClinical = category === 'clinical';
+  const threshold = isClinical ? 25 : 20;
+  
+  return score >= threshold; // Pass if score meets or exceeds threshold
+};
+
 // Check if post-test score is passing (green) based on category thresholds
 export const isPostTestPassing = (score, category) => {
   if (score === null) return false; // No score means not passing
@@ -179,10 +189,19 @@ export const showHighestScorers = (category, allResults, activeTab, setSelectedC
 
 // Calculate dashboard statistics
 export const calculateDashboardStats = (allResults) => {
+  alert(`🔍 DEBUG: calculateDashboardStats called with allResults.length: ${allResults.length}`);
+  console.log("🔍 DEBUG: calculateDashboardStats called with allResults:", allResults);
+  console.log("🔍 DEBUG: allResults.length:", allResults.length);
+  console.log("🔍 DEBUG: allResults sample:", allResults.slice(0, 2));
+  
   const totalParticipants = allResults.length;
 
   if (totalParticipants === 0) {
     return {
+      totalParticipants: 0,
+      clinicalCount: 0,
+      nonClinicalCount: 0,
+      certifiedCount: 0,
       highestScores: { 
         clinical: { preTest: 0, postTest: 0 }, 
         nonClinical: { preTest: 0, postTest: 0 } 
@@ -199,22 +218,27 @@ export const calculateDashboardStats = (allResults) => {
   const clinicalResults = allResults.filter(r => r.category === 'clinical');
   const nonClinicalResults = allResults.filter(r => r.category === 'non-clinical');
 
+  const clinicalPreTestScores = clinicalResults.filter(r => r.preTestScore !== null).map(r => r.preTestScore);
+  const clinicalPostTestScores = clinicalResults.filter(r => r.postTestScore !== null).map(r => r.postTestScore);
+  const nonClinicalPreTestScores = nonClinicalResults.filter(r => r.preTestScore !== null).map(r => r.preTestScore);
+  const nonClinicalPostTestScores = nonClinicalResults.filter(r => r.postTestScore !== null).map(r => r.postTestScore);
+
   const highestScores = {
     clinical: {
-      preTest: clinicalResults.length > 0 ? Math.max(...clinicalResults.map(r => r.preTestScore || 0)) : 0,
-      postTest: clinicalResults.length > 0 ? Math.max(...clinicalResults.map(r => r.postTestScore || 0)) : 0
+      preTest: clinicalPreTestScores.length > 0 ? Math.max(...clinicalPreTestScores) : 0,
+      postTest: clinicalPostTestScores.length > 0 ? Math.max(...clinicalPostTestScores) : 0
     },
     nonClinical: {
-      preTest: nonClinicalResults.length > 0 ? Math.max(...nonClinicalResults.map(r => r.preTestScore || 0)) : 0,
-      postTest: nonClinicalResults.length > 0 ? Math.max(...nonClinicalResults.map(r => r.postTestScore || 0)) : 0
+      preTest: nonClinicalPreTestScores.length > 0 ? Math.max(...nonClinicalPreTestScores) : 0,
+      postTest: nonClinicalPostTestScores.length > 0 ? Math.max(...nonClinicalPostTestScores) : 0
     }
   };
 
   // Calculate pass/fail statistics
   const passFailStats = {
     preTest: {
-      pass: allResults.filter(r => r.preTestScore !== null && isPostTestPassing(r.preTestScore, r.category)).length,
-      fail: allResults.filter(r => r.preTestScore !== null && !isPostTestPassing(r.preTestScore, r.category)).length,
+      pass: allResults.filter(r => r.preTestScore !== null && isPreTestPassing(r.preTestScore, r.category)).length,
+      fail: allResults.filter(r => r.preTestScore !== null && !isPreTestPassing(r.preTestScore, r.category)).length,
       total: allResults.filter(r => r.preTestScore !== null).length
     },
     postTest: {
@@ -224,11 +248,40 @@ export const calculateDashboardStats = (allResults) => {
     }
   };
 
-  return {
+  // Calculate additional dashboard metrics
+  const clinicalCount = allResults.filter(r => r.category === 'clinical').length;
+  const nonClinicalCount = allResults.filter(r => r.category === 'non-clinical').length;
+  
+  // Calculate certified count safely
+  let certifiedCount = 0;
+  try {
+    certifiedCount = allResults.filter(r => {
+      try {
+        return calculateCertified(r);
+      } catch (error) {
+        console.warn('Error calculating certification for result:', r, error);
+        return false;
+      }
+    }).length;
+  } catch (error) {
+    console.error('Error calculating certified count:', error);
+    certifiedCount = 0;
+  }
+
+  const result = {
+    totalParticipants: allResults.length,
+    clinicalCount,
+    nonClinicalCount,
+    certifiedCount,
     highestScores,
     passFailStats,
     questionAnalysis: []
   };
+  
+  console.log("📊 calculateDashboardStats result:", result);
+  console.log("🔍 DEBUG: Final counts - totalParticipants:", result.totalParticipants, "clinicalCount:", result.clinicalCount, "nonClinicalCount:", result.nonClinicalCount, "certifiedCount:", result.certifiedCount);
+  console.log("🔍 DEBUG: PassFailStats - preTest.total:", result.passFailStats.preTest.total, "postTest.total:", result.passFailStats.postTest.total);
+  return result;
 };
 
 // Export to CSV

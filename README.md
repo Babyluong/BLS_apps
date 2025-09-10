@@ -1,4 +1,5 @@
 # BLS (Basic Life Support) Training App
+<!-- Test comment for auto-sync check -->
 
 A comprehensive React Native application for Basic Life Support training and assessment, built with Expo and Supabase.
 

@@ -1,0 +1,520 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  RefreshControl,
+  Alert,
+  Modal
+} from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LuxuryShell from '../components/LuxuryShell';
+import CertificateScreen from './CertificateScreen';
+import supabase from '../services/supabase';
+import { getUserCategory } from '../utils/scoreUtils';
+
+// Import new components
+import AllResultsTab from '../components/AllResultsTab';
+import DashboardTab from '../components/DashboardTab';
+import PreTestStatsTab from '../components/PreTestStatsTab';
+import PostTestStatsTab from '../components/PostTestStatsTab';
+import DatePicker from '../components/DatePicker';
+import SearchControls from '../components/SearchControls';
+import PaginationControls from '../components/PaginationControls';
+
+// Import utilities and styles
+import { 
+  getJawatanWithFallback,
+  calculateRemedialAllowed,
+  getScoreColor,
+  getScoreTextColor,
+  isPostTestPassing,
+  calculateCertified,
+  getChecklistDisplayName,
+  processQuestionsFromDatabase,
+  showHighestScorers,
+  calculateDashboardStats,
+  exportToCSV
+} from '../utils/blsResultsUtils';
+import { styles } from '../styles/blsResultsStyles';
+
+export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
+  // State management
+  const [activeTab, setActiveTab] = useState('all');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState(null);
+  const [dateFilterType, setDateFilterType] = useState('all');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [resultsPerPage, setResultsPerPage] = useState(20);
+  
+  // Modal state
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedResult, setSelectedResult] = useState(null);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [selectedChecklist, setSelectedChecklist] = useState(null);
+  const [showParticipantModal, setShowParticipantModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [certificateData, setCertificateData] = useState(null);
+  
+  // Statistics state
+  const [pretestStats, setPretestStats] = useState([]);
+  const [posttestStats, setPosttestStats] = useState([]);
+  const [users, setUsers] = useState({});
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Load results
+  const loadResults = useCallback(async () => {
+    console.log("=== loadResults function called ===");
+    setLoading(true);
+    setError("");
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError("User not logged in.");
+        setLoading(false);
+        return;
+      }
+      
+      setCurrentUser(user);
+      
+      // Check if user is admin
+      const { data: userData } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("id", user.id)
+        .single();
+      
+      const isAdmin = userData?.role === 'admin';
+      
+      // Fetch quiz sessions (pretest and posttest)
+      console.log("Starting to fetch quiz sessions...");
+      let quizQuery = supabase
+        .from("quiz_sessions")
+        .select(`
+          id,
+          user_id,
+          quiz_key,
+          score,
+          total_questions,
+          percentage,
+          status,
+          participant_name,
+          participant_ic,
+          answers,
+          created_at,
+          updated_at
+        `)
+        .in("quiz_key", ["pretest", "posttest"])
+        .eq("status", "submitted")
+        .order("created_at", { ascending: false });
+
+      if (!isAdmin) {
+        quizQuery = quizQuery.eq("user_id", user.id);
+      }
+
+      const { data: quizSessions, error: quizError } = await quizQuery;
+      if (quizError) {
+        console.error("Error fetching quiz sessions:", quizError);
+      } else {
+        console.log("Quiz sessions fetched successfully:", quizSessions?.length || 0, quizSessions);
+      }
+
+      // Fetch checklist results
+      let checklistQuery = supabase
+        .from("checklist_results")
+        .select(`
+          id,
+          user_id,
+          participant_name,
+          participant_ic,
+          checklist_type,
+          score,
+          total_items,
+          status,
+          checklist_details,
+          comments,
+          created_at
+        `)
+        .in("status", ["PASS", "FAIL"])
+        .order("created_at", { ascending: false });
+
+      if (!isAdmin) {
+        checklistQuery = checklistQuery.eq("user_id", user.id);
+      }
+
+      const { data: checklistResults, error: checklistError } = await checklistQuery;
+      if (checklistError) {
+        console.error("Error fetching checklist results:", checklistError);
+      } else {
+        console.log("Checklist results fetched successfully:", checklistResults?.length || 0, checklistResults);
+      }
+
+      // For now, set empty results to test the UI
+      setResults([]);
+      
+    } catch (e) {
+      console.error('Error loading results:', e);
+      setError(String(e?.message || e));
+      setResults([]);
+    } finally {
+      console.log("=== loadResults function completed ===");
+      setLoading(false);
+    }
+  }, []);
+
+  // Load question statistics
+  const loadQuestionStatistics = useCallback(async () => {
+    try {
+      // Your existing loadQuestionStatistics logic here
+      // This would be the same as the original implementation
+    } catch (err) {
+      console.error('Error loading question statistics:', err);
+    }
+  }, []);
+
+  // Refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadResults();
+    await loadQuestionStatistics();
+    setRefreshing(false);
+  }, [loadResults, loadQuestionStatistics]);
+
+  // Filter results based on search and date
+  const getFilteredResults = useCallback(() => {
+    let filtered = [...results];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(result =>
+        result.participantName?.toLowerCase().includes(query) ||
+        result.participantIc?.toLowerCase().includes(query) ||
+        result.jawatan?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply date filter
+    if (dateFilterType === 'today') {
+      const today = new Date().toDateString();
+      filtered = filtered.filter(result => new Date(result.date).toDateString() === today);
+    } else if (dateFilterType === '7days') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      filtered = filtered.filter(result => new Date(result.date) >= sevenDaysAgo);
+    } else if (dateFilterType === 'custom' && dateFilter) {
+      const filterDate = new Date(dateFilter).toDateString();
+      filtered = filtered.filter(result => new Date(result.date).toDateString() === filterDate);
+    }
+
+    return filtered;
+  }, [results, searchQuery, dateFilter, dateFilterType]);
+
+  // Get paginated results
+  const getPaginatedResults = useCallback(() => {
+    const filtered = getFilteredResults();
+    const startIndex = (currentPage - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }, [getFilteredResults, currentPage, resultsPerPage]);
+
+  // Get total pages
+  const getTotalPages = useCallback(() => {
+    const filtered = getFilteredResults();
+    return Math.ceil(filtered.length / resultsPerPage);
+  }, [getFilteredResults, resultsPerPage]);
+
+  // Calculate dashboard statistics
+  const getNewDashboardStats = useCallback(() => {
+    const allResults = getFilteredResults();
+    return calculateDashboardStats(allResults);
+  }, [getFilteredResults]);
+
+  // Event handlers
+  const handleResultsPerPageChange = (newResultsPerPage) => {
+    setResultsPerPage(newResultsPerPage);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const handleMetricCardClick = (category, filterType) => {
+    const allResults = getFilteredResults();
+    let filtered = [];
+
+    switch (filterType) {
+      case 'clinical':
+        filtered = allResults.filter(r => r.category === 'clinical');
+        setSelectedCategory('Clinical Staff');
+        break;
+      case 'non-clinical':
+        filtered = allResults.filter(r => r.category === 'non-clinical');
+        setSelectedCategory('Non-Clinical Staff');
+        break;
+      case 'pre-test-pass':
+        filtered = allResults.filter(r => 
+          r.preTestScore !== null && isPostTestPassing(r.preTestScore, r.category)
+        );
+        setSelectedCategory('Pre-Test Pass');
+        break;
+      case 'post-test-pass':
+        filtered = allResults.filter(r => 
+          r.postTestScore !== null && isPostTestPassing(r.postTestScore, r.category)
+        );
+        setSelectedCategory('Post-Test Pass');
+        break;
+      case 'certified':
+        filtered = allResults.filter(r => calculateCertified(r));
+        setSelectedCategory('Certified Participants');
+        break;
+      default:
+        filtered = allResults;
+        setSelectedCategory('All Participants');
+    }
+
+    setShowParticipantModal(filtered);
+  };
+
+  const handleShowHighestScorers = (category) => {
+    const allResults = getFilteredResults();
+    showHighestScorers(category, allResults, activeTab, setSelectedCategory, setShowParticipantModal);
+  };
+
+  const handleViewDetails = (result) => {
+    setSelectedResult(result);
+    setShowDetailModal(true);
+  };
+
+  const handleViewChecklistDetails = (result, checklistType) => {
+    if (result.checklistDetails && result.checklistDetails[checklistType]) {
+      const latestResult = result.latestResults?.[checklistType] || {};
+      
+      setSelectedChecklist({
+        participantName: result.participantName,
+        participantId: result.participantId,
+        checklistType,
+        details: latestResult,
+        displayName: getChecklistDisplayName(checklistType)
+      });
+      setShowChecklistModal(true);
+    }
+  };
+
+  const handleShowCertificate = (result) => {
+    setCertificateData(result);
+    setShowCertificate(true);
+  };
+
+  const handleExportToCSV = () => {
+    exportToCSV(getFilteredResults, getNewDashboardStats);
+  };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, dateFilter, dateFilterType]);
+
+  // Load data on mount
+  useEffect(() => {
+    loadResults();
+    loadQuestionStatistics();
+  }, [loadResults, loadQuestionStatistics]);
+
+  // Render tab content
+  const renderTabContent = () => {
+    const filteredResults = getFilteredResults();
+    const paginatedResults = getPaginatedResults();
+    const dashboardStats = getNewDashboardStats();
+
+    switch (activeTab) {
+      case 'all':
+        return (
+          <AllResultsTab
+            results={paginatedResults}
+            loading={loading}
+            error={error}
+            onRetry={loadResults}
+            onViewDetails={handleViewDetails}
+            onViewChecklistDetails={handleViewChecklistDetails}
+            onShowCertificate={handleShowCertificate}
+            currentPage={currentPage}
+            resultsPerPage={resultsPerPage}
+            totalResults={filteredResults.length}
+            onPageChange={handlePageChange}
+            onResultsPerPageChange={handleResultsPerPageChange}
+          />
+        );
+      
+      case 'dashboard':
+        return (
+          <DashboardTab
+            dashboardStats={dashboardStats}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onMetricCardClick={handleMetricCardClick}
+            onShowHighestScorers={handleShowHighestScorers}
+          />
+        );
+      
+      case 'pretest':
+        return (
+          <PreTestStatsTab
+            stats={pretestStats}
+            dashboardStats={dashboardStats}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onShowHighestScorers={handleShowHighestScorers}
+            onViewQuestionDetails={(question) => {
+              // Handle question details view
+              console.log('View question details:', question);
+            }}
+          />
+        );
+      
+      case 'posttest':
+        return (
+          <PostTestStatsTab
+            stats={posttestStats}
+            dashboardStats={dashboardStats}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onShowHighestScorers={handleShowHighestScorers}
+            onViewQuestionDetails={(question) => {
+              // Handle question details view
+              console.log('View question details:', question);
+            }}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  // If showing certificate, render it as a full screen
+  if (showCertificate && certificateData) {
+    return (
+      <CertificateScreen 
+        participantData={certificateData}
+        onBack={() => setShowCertificate(false)}
+      />
+    );
+  }
+
+  return (
+    <LuxuryShell title="BLS Results - All Participants" onSignOut={onSignOut} onBack={onBack}>
+      <View style={styles.container}>
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'all' && styles.activeTab]}
+            onPress={() => setActiveTab('all')}
+          >
+            <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
+              ALL RESULTS
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'dashboard' && styles.activeTab]}
+            onPress={() => setActiveTab('dashboard')}
+          >
+            <Text style={[styles.tabText, activeTab === 'dashboard' && styles.activeTabText]}>
+              DASHBOARD
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'pretest' && styles.activeTab]}
+            onPress={() => setActiveTab('pretest')}
+          >
+            <Text style={[styles.tabText, activeTab === 'pretest' && styles.activeTabText]}>
+              PRE TEST STATS
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'posttest' && styles.activeTab]}
+            onPress={() => setActiveTab('posttest')}
+          >
+            <Text style={[styles.tabText, activeTab === 'posttest' && styles.activeTabText]}>
+              POST TEST STATS
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search and Filter Controls */}
+        {(activeTab === 'all' || activeTab === 'pretest' || activeTab === 'posttest') && (
+          <SearchControls
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onClearSearch={() => setSearchQuery('')}
+            dateFilterType={dateFilterType}
+            onDateFilterPress={() => setShowDatePicker(true)}
+            showExportButton={activeTab === 'all'}
+            onExportPress={handleExportToCSV}
+          />
+        )}
+
+        {/* Pagination Controls - Only for All Results tab */}
+        {activeTab === 'all' && getFilteredResults().length > 0 && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={getTotalPages()}
+            resultsPerPage={resultsPerPage}
+            totalResults={getFilteredResults().length}
+            onPageChange={handlePageChange}
+            onResultsPerPageChange={handleResultsPerPageChange}
+          />
+        )}
+
+        {/* Summary Header */}
+        {getFilteredResults().length > 0 && (
+          <View style={styles.summaryHeader}>
+            <Text style={styles.summaryText}>
+              {activeTab === 'all' && `Total Participants: ${getFilteredResults().length}`}
+              {activeTab === 'pretest' && `Pre-Test Participants: ${getNewDashboardStats().passFailStats.preTest.total}`}
+              {activeTab === 'posttest' && `Post-Test Participants: ${getNewDashboardStats().passFailStats.postTest.total}`}
+              {searchQuery && ` (filtered by "${searchQuery}")`}
+              {dateFilterType === 'today' && ' (Today)'}
+              {dateFilterType === '7days' && ' (Last 7 days)'}
+              {dateFilterType === 'custom' && dateFilter && ` (${new Date(dateFilter).toLocaleDateString()})`}
+            </Text>
+            {activeTab === 'all' && (
+              <Text style={styles.paginationInfo}>
+                Showing {((currentPage - 1) * resultsPerPage) + 1}-{Math.min(currentPage * resultsPerPage, getFilteredResults().length)} of {getFilteredResults().length}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Tab Content */}
+        {renderTabContent()}
+
+        {/* Date Picker Modal */}
+        <DatePicker
+          visible={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          onSelectDate={setDateFilter}
+          onSelectFilterType={setDateFilterType}
+          selectedDate={dateFilter || new Date()}
+          dateFilterType={dateFilterType}
+          customDate={dateFilter}
+        />
+
+        {/* Add other modals here as needed */}
+      </View>
+    </LuxuryShell>
+  );
+}

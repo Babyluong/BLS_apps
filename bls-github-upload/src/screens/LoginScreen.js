@@ -1,0 +1,320 @@
+// screens/LoginScreen.js — iOS-compatible login with better error handling
+import React, { useState } from "react";
+import { View, Text, StyleSheet, Dimensions, Alert, Platform } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import LoginCard from "../components/LoginCard";
+import supabase from "../services/supabase";
+import { BRAND1, BRAND2, ADMIN } from "../../constants";
+
+const { width } = Dimensions.get("window");
+
+export default function LoginScreen({ onSubmit, loading = false, navigation, errorMessage, clearError }) {
+  const [localLoading, setLocalLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
+
+  // iOS-compatible string normalization
+  const normalizeString = (str = "") => {
+    if (!str) return "";
+    return String(str)
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/[^\w\s]/g, "") // Remove special characters
+      .toUpperCase();
+  };
+
+  // More flexible name matching for iOS
+  const isNameMatch = (inputName, dbName) => {
+    if (!inputName || !dbName) return false;
+    
+    const normalizedInput = normalizeString(inputName);
+    const normalizedDb = normalizeString(dbName);
+    
+    // Exact match
+    if (normalizedInput === normalizedDb) return true;
+    
+    // Check if input name contains first part of DB name or vice versa
+    const inputParts = normalizedInput.split(" ");
+    const dbParts = normalizedDb.split(" ");
+    
+    // Check if any part matches
+    for (const inputPart of inputParts) {
+      for (const dbPart of dbParts) {
+        if (inputPart.length > 2 && dbPart.length > 2 && 
+            (inputPart.includes(dbPart) || dbPart.includes(inputPart))) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+
+  const fallbackSubmit = async ({ name, ic }) => {
+    setErr(""); 
+    setInfo(""); 
+    setLocalLoading(true);
+    clearError?.();
+    
+    console.log("🍎 iOS Login Debug:", { 
+      platform: Platform.OS, 
+      name, 
+      ic,
+      normalizedName: normalizeString(name),
+      normalizedIC: normalizeString(ic)
+    });
+    
+    try {
+      // Test database connection first
+      console.log("🧪 Testing database connection...");
+      const { data: testData, error: testError } = await supabase
+        .from("profiles")
+        .select("full_name, ic")
+        .limit(3);
+      
+      if (testError) {
+        console.error("❌ Database connection failed:", testError);
+        setErr("Database connection failed. Please check your internet connection.");
+        return;
+      }
+      
+      console.log("✅ Database connection successful");
+      console.log("📋 Sample users data:", testData);
+      // Admin bypass
+      if (name === ADMIN.name && ic === ADMIN.ic) {
+        console.log("👑 Admin login detected");
+        navigation?.replace?.("AdminHome", {
+          user: { id: "admin-local", full_name: ADMIN.name, role: "admin" },
+        });
+        return;
+      }
+
+      const norm = (s = "") => String(s || "").trim().replace(/\s+/g, " ");
+      const fullName = norm(name);
+      const passwordIC = norm(ic);
+      const email = `${passwordIC}@hospital-lawas.local`;
+      
+      // Check if it's admin with more flexible matching
+      const isAdmin = (
+        normalizeString(fullName) === normalizeString(ADMIN.name) ||
+        passwordIC === ADMIN.ic ||
+        email.toLowerCase() === `${ADMIN.ic}@hospital-lawas.local`.toLowerCase()
+      );
+
+      console.log("🔐 Login attempt:", { 
+        fullName, 
+        passwordIC, 
+        email, 
+        isAdmin,
+        normalizedName: normalizeString(fullName)
+      });
+
+      // Try normal sign-in first
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password: passwordIC 
+      });
+      
+      if (!error && data?.user) {
+        console.log("✅ Supabase auth successful");
+        
+        // Check if user is staff in profiles table
+        const { data: staffData } = await supabase
+          .from("profiles")
+          .select("role, full_name")
+          .eq("ic", passwordIC)
+          .eq("role", "staff")
+          .single();
+        
+        console.log("👥 Staff check result:", staffData);
+        
+        const userRole = isAdmin ? "admin" : staffData ? "staff" : "user";
+        
+        const homeScreen = userRole === "admin" ? "AdminHome" : 
+                          userRole === "staff" ? "StaffHome" : "UserHome";
+        
+        console.log("🏠 Navigating to:", homeScreen);
+        
+        navigation?.replace?.(homeScreen, { 
+          user: { id: data.user.id, full_name: fullName, email, role: userRole } 
+        });
+        return;
+      } else {
+        console.log("❌ Supabase auth failed:", error?.message);
+      }
+
+      // Check users table for regular users with flexible matching
+      const { data: userData, error: userCheckError } = await supabase
+        .from("profiles")
+        .select("full_name, ic, job_position")
+        .eq("ic", passwordIC)
+        .single();
+
+      console.log("👤 User query result:", { userData, userCheckError });
+
+      // Check profiles table for staff members with flexible matching
+      const { data: staffData, error: staffCheckError } = await supabase
+        .from("profiles")
+        .select("full_name, ic, role")
+        .eq("ic", passwordIC)
+        .eq("role", "staff")
+        .single();
+
+      console.log("👥 Staff query result:", { staffData, staffCheckError });
+
+      // Use flexible name matching
+      const userExists = userData && isNameMatch(fullName, userData.full_name);
+      const staffExists = staffData && isNameMatch(fullName, staffData.full_name);
+
+      console.log("🔍 Name matching result:", {
+        userExists,
+        staffExists,
+        inputName: fullName,
+        userDbName: userData?.full_name,
+        staffDbName: staffData?.full_name
+      });
+
+      if (!userExists && !staffExists) {
+        // Try to find similar names for better error message
+        const { data: similarUsers } = await supabase
+          .from("profiles")
+          .select("full_name, ic")
+          .ilike("full_name", `%${fullName.split(' ')[0]}%`)
+          .limit(3);
+        
+        const { data: similarStaff } = await supabase
+          .from("profiles")
+          .select("full_name, ic")
+          .ilike("full_name", `%${fullName.split(' ')[0]}%`)
+          .limit(3);
+        
+        console.log("🔍 Similar names found:", { similarUsers, similarStaff });
+        
+        setErr(`User not found. Please check your name and IC number.${Platform.OS === 'ios' ? ' (iOS)' : ''}`);
+        return;
+      }
+
+      // Determine user role based on which table they exist in
+      const userRole = staffExists ? "staff" : "user";
+
+      console.log("🔄 Provisioning new user...");
+
+      // Provision new user and sign in
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: passwordIC,
+        options: {
+          data: {
+            full_name: fullName,
+            ic: passwordIC
+          }
+        }
+      });
+
+      if (signUpError && !signUpError.message.includes("already registered")) {
+        console.error("❌ Sign up error:", signUpError);
+        throw signUpError;
+      }
+
+      // Sign in after provisioning
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password: passwordIC 
+      });
+
+      if (signInError || !signInData?.user) {
+        console.error("❌ Sign in error:", signInError);
+        throw new Error(signInError?.message || "Cannot sign in after provisioning");
+      }
+
+      console.log("✅ User provisioned and signed in successfully");
+
+      // Create profile
+      const finalRole = isAdmin ? "admin" : userRole;
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: signInData.user.id,
+        full_name: fullName,
+        ic: passwordIC,
+        email: email,
+        role: finalRole,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (profileError) {
+        console.warn("⚠️ Profile creation failed:", profileError);
+      }
+
+      // Navigate to appropriate home screen
+      const homeScreen = finalRole === "admin" ? "AdminHome" : 
+                        finalRole === "staff" ? "StaffHome" : "UserHome";
+      
+      console.log("🏠 Final navigation to:", homeScreen);
+      
+      navigation?.replace?.(homeScreen, { 
+        user: { id: signInData.user.id, full_name: fullName, email, role: finalRole } 
+      });
+    } catch (e) {
+      console.error("❌ Login error:", e);
+      const msg = e?.message || "Sign in failed.";
+      setErr(`${msg}${Platform.OS === 'ios' ? ' (iOS)' : ''}`);
+      Alert.alert("Sign in error", msg);
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  const handler = onSubmit || fallbackSubmit;
+  const busy = loading || localLoading;
+
+  return (
+    <View style={styles.shell}>
+      {/* Welcome panel (unchanged style) */}
+      <View style={[styles.brandPanel, styles.column]}>
+        <View style={styles.brandInner}>
+          <View style={styles.monogramWrap}>
+            <LinearGradient colors={[BRAND1, BRAND2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.monogramDisc}>
+              <Text style={styles.monogram}>BLS</Text>
+            </LinearGradient>
+            <Text style={styles.brandName}>Basic Life Support</Text>
+          </View>
+          <Text style={styles.h1}>Hospital Lawas</Text>
+          <Text style={styles.tagline}>Every Second Counts</Text>
+        </View>
+      </View>
+
+      {/* Login card (unchanged positioning) */}
+      <View style={styles.column}>
+        <LoginCard onSubmit={handler} loading={busy} />
+        {(!!err || !!errorMessage) && (
+          <Text style={{ color: "#ffb3b3", marginTop: 8, textAlign: "center" }}>
+            {err || errorMessage}
+          </Text>
+        )}
+        {!!info && !err && !errorMessage && (
+          <Text style={{ color: "#a6f3c1", marginTop: 8, textAlign: "center" }}>
+            {info}
+          </Text>
+        )}
+        {Platform.OS === 'ios' && (
+          <Text style={{ color: "#8a7f6a", marginTop: 4, textAlign: "center", fontSize: 12 }}>
+            iOS Version
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------ Styles (kept exactly) ------------------------ */
+const styles = StyleSheet.create({
+  shell: { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", paddingHorizontal: 16, gap: 22 },
+  column: { minHeight: 180, justifyContent: "center", alignItems: "center", width: Math.min(560, width - 24) },
+  brandPanel: { width: Math.min(560, width - 24), paddingHorizontal: 6 },
+  brandInner: { alignItems: "center", justifyContent: "center" },
+  monogramWrap: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  monogramDisc: { width: 34, height: 34, borderRadius: 20, alignItems: "center", justifyContent: "center", shadowOpacity: 0.6, shadowRadius: 12, marginRight: 8 },
+  monogram: { color: "#1c1710", fontWeight: "900", letterSpacing: 1 },
+  brandName: { color: "#e9ddc4", fontSize: 16, letterSpacing: 3, fontWeight: "700", textAlign: "center" },
+  h1: { color: "#f5ead1", fontSize: 38, fontWeight: "900", letterSpacing: 0.2, textAlign: "center" },
+  tagline: { color: "#bfb7a5", marginTop: 6, fontSize: 15, textAlign: "center" },
+});

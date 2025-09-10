@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import LuxuryShell from "../components/LuxuryShell";
 import BackRow from "../components/BackRow";
-import { fetchLogs } from "../lib/api";
+import { fetchLogs } from "../../lib/api";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function ActivityLogsScreen({ onSignOut, onBack }) {

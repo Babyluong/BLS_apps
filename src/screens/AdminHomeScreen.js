@@ -2,7 +2,7 @@
 import React from "react";
 import LuxuryShell from "../components/LuxuryShell";
 import HomeGrid from "../components/HomeGrid";
-import { logEvent } from "../lib/api";
+import { logEvent } from "../../lib/api";
 
 export default function AdminHomeScreen({ onSignOut, onNavigate }) {
   return (

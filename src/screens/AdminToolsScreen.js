@@ -6,7 +6,7 @@ import BackRow from "../components/BackRow";
 import StubCard from "../components/StubCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { BRAND1, BRAND2 } from "../constants";
-import { fetchResults, logEvent } from "../lib/api";
+import { fetchResults, logEvent } from "../../lib/api";
 import supabase from "../services/supabase";
 import ScoreUpdateService from "../services/scoreUpdateService";
 

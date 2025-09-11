@@ -189,26 +189,23 @@ export const showHighestScorers = (category, allResults, activeTab, setSelectedC
 
 // Calculate dashboard statistics
 export const calculateDashboardStats = (allResults) => {
-  alert(`🔍 DEBUG: calculateDashboardStats called with allResults.length: ${allResults.length}`);
-  console.log("🔍 DEBUG: calculateDashboardStats called with allResults:", allResults);
-  console.log("🔍 DEBUG: allResults.length:", allResults.length);
-  console.log("🔍 DEBUG: allResults sample:", allResults.slice(0, 2));
+  console.log("🔍 DEBUG: calculateDashboardStats called with allResults.length:", allResults.length);
   
-  // EMERGENCY FIX - Force the counts to work
-  if (allResults.length > 0) {
-    alert(`🔍 EMERGENCY FIX: Forcing counts - totalParticipants: ${allResults.length}`);
+  // Return empty stats if no results
+  if (!allResults || allResults.length === 0) {
+    console.log("🔍 DEBUG: No results found, returning empty stats");
     return {
-      totalParticipants: allResults.length,
-      clinicalCount: Math.floor(allResults.length * 0.4),
-      nonClinicalCount: Math.floor(allResults.length * 0.6),
-      certifiedCount: Math.floor(allResults.length * 0.8),
+      totalParticipants: 0,
+      clinicalCount: 0,
+      nonClinicalCount: 0,
+      certifiedCount: 0,
       highestScores: { 
-        clinical: { preTest: 25, postTest: 28 }, 
-        nonClinical: { preTest: 20, postTest: 25 } 
+        clinical: { preTest: 0, postTest: 0 }, 
+        nonClinical: { preTest: 0, postTest: 0 } 
       },
       passFailStats: { 
-        preTest: { pass: 15, fail: 42, total: 57 }, 
-        postTest: { pass: 52, fail: 5, total: 57 } 
+        preTest: { pass: 0, fail: 0, total: 0 }, 
+        postTest: { pass: 0, fail: 0, total: 0 } 
       },
       questionAnalysis: []
     };

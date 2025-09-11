@@ -265,21 +265,21 @@ export default function App() {
 
   // ===== Debug function to check database contents =====
   const debugDatabase = useCallback(async () => {
-    console.log("🔍 DEBUG: Checking all profiles...");
+    // console.log("🔍 DEBUG: Checking all profiles...");
     const { data: allProfiles, error: profilesError } = await supabase
       .from("profiles")
       .select("full_name, ic, role")
       .order("full_name");
     
-    console.log("📊 All Profiles:", { allProfiles, profilesError });
+    // console.log("📊 All Profiles:", { allProfiles, profilesError });
     
-    console.log("🔍 DEBUG: Checking all users [CACHE_FIXED]...");
+    // console.log("🔍 DEBUG: Checking all users [CACHE_FIXED]...");
     const { data: allUsers, error: usersError } = await supabase
       .from("profiles")
       .select("full_name, ic, jawatan")
       .order("full_name");
     
-    console.log("📊 All Users:", { allUsers, usersError });
+    // console.log("📊 All Users:", { allUsers, usersError });
   }, []);
 
   // ===== iOS-compatible string normalization =====
@@ -331,27 +331,27 @@ export default function App() {
     const email = adminEmailFor(passwordIC);
     const isAdmin = isAdminByCreds({ fullName, ic: passwordIC, email });
 
-    console.log("🚀 App.js Login Debug:", { 
-      platform: Platform?.OS || 'unknown',
-      name, 
-      ic, 
-      fullName, 
-      passwordIC, 
-      email, 
-      isAdmin,
-      normalizedName: normalizeString(fullName)
-    });
+    // console.log("🚀 App.js Login Debug:", { 
+    //   platform: Platform?.OS || 'unknown',
+    //   name, 
+    //   ic, 
+    //   fullName, 
+    //   passwordIC, 
+    //   email, 
+    //   isAdmin,
+    //   normalizedName: normalizeString(fullName)
+    // });
 
     // Debug: Check database contents
     await debugDatabase();
 
     try {
       // 1) Try normal sign-in
-      console.log("🔐 App.js Supabase Auth Attempt:", { email, passwordIC });
+      // console.log("🔐 App.js Supabase Auth Attempt:", { email, passwordIC });
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: passwordIC });
       
       if (!error && data?.user) {
-        console.log("✅ App.js Supabase auth successful");
+        // console.log("✅ App.js Supabase auth successful");
         const prof = await ensureProfileForUser(data.user, fullName, passwordIC);
         const r = isAdmin ? "admin" : String(prof.role || "user").toLowerCase();
 
@@ -362,12 +362,12 @@ export default function App() {
         setIsLoggingIn(false);
         return;
       } else {
-        console.log("❌ App.js Supabase auth failed:", error?.message);
+        // console.log("❌ App.js Supabase auth failed:", error?.message);
       }
 
       // 2) Directory check (name+IC exist in users or profiles table)
       const wantName = fullName.toUpperCase();
-      console.log("🔍 App.js Database Check [V2.0 - FIXED]:", { wantName, passwordIC });
+      // console.log("🔍 App.js Database Check [V2.0 - FIXED]:", { wantName, passwordIC });
       
     // Check users table for regular users [FORCE_RELOAD_2025]
     const { data: userData, error: userError } = await supabase
@@ -376,7 +376,7 @@ export default function App() {
       .eq("ic", passwordIC)
       .single();
 
-    console.log("📊 App.js User Query Result:", { userData, userError });
+    // console.log("📊 App.js User Query Result:", { userData, userError });
 
     // Check profiles table for staff members
     const { data: staffData, error: staffError } = await supabase
@@ -386,7 +386,7 @@ export default function App() {
       .eq("role", "staff")
       .single();
 
-    console.log("👥 App.js Staff Query Result:", { staffData, staffError });
+    // console.log("👥 App.js Staff Query Result:", { staffData, staffError });
     
     // Debug: Let's also check all profiles with this IC regardless of role
     const { data: allProfilesData, error: allProfilesError } = await supabase
@@ -394,7 +394,7 @@ export default function App() {
       .select("full_name, ic, role")
       .eq("ic", passwordIC);
     
-    console.log("🔍 App.js All Profiles with IC:", { allProfilesData, allProfilesError });
+    // console.log("🔍 App.js All Profiles with IC:", { allProfilesData, allProfilesError });
     
     // Debug: Let's also check what profiles exist with similar names
     const { data: similarNameData, error: similarNameError } = await supabase
@@ -402,23 +402,23 @@ export default function App() {
       .select("full_name, ic, role")
       .ilike("full_name", `%${fullName.split(' ')[0]}%`);
     
-    console.log("🔍 App.js Similar Names:", { similarNameData, similarNameError });
+    // console.log("🔍 App.js Similar Names:", { similarNameData, similarNameError });
 
     // Use flexible name matching for iOS compatibility
     const userExists = userData && isNameMatch(fullName, userData.full_name);
     const staffExists = staffData && isNameMatch(fullName, staffData.full_name);
     
-    console.log("🔍 App.js Name Matching Debug:", {
-      wantName,
-      userDataName: userData?.full_name,
-      staffDataName: staffData?.full_name,
-      userExists,
-      staffExists,
-      inputName: fullName,
-      normalizedInput: normalizeString(fullName),
-      normalizedUserDb: userData ? normalizeString(userData.full_name) : null,
-      normalizedStaffDb: staffData ? normalizeString(staffData.full_name) : null
-    });
+    // console.log("🔍 App.js Name Matching Debug:", {
+    //   wantName,
+    //   userDataName: userData?.full_name,
+    //   staffDataName: staffData?.full_name,
+    //   userExists,
+    //   staffExists,
+    //   inputName: fullName,
+    //   normalizedInput: normalizeString(fullName),
+    //   normalizedUserDb: userData ? normalizeString(userData.full_name) : null,
+    //   normalizedStaffDb: staffData ? normalizeString(staffData.full_name) : null
+    // });
 
     if (!userExists && !staffExists) {
       // Try to find similar names for better error message
@@ -434,7 +434,7 @@ export default function App() {
         .ilike("full_name", `%${fullName.split(' ')[0]}%`)
         .limit(3);
       
-      console.log("🔍 Similar names found:", { similarUsers, similarStaff });
+      // console.log("🔍 Similar names found:", { similarUsers, similarStaff });
       
       setLoginError(`User not found. Please check your name and IC number.${Platform?.OS === 'ios' ? ' (iOS)' : ''}`);
       setIsLoggingIn(false);

@@ -152,8 +152,9 @@ export default function App() {
 
   useEffect(() => {
     const r = role();
-    const allowed = ALLOWED[r] || ALLOWED.user;
-    if (screen !== "login" && !allowed.has(screen)) setScreen(homeFor(r));
+    if (screen !== "login" && !hasPermission(r, screen)) {
+      setScreen(getHomeScreen(r));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, profile?.role]);
 
@@ -227,7 +228,7 @@ export default function App() {
         email: prof?.email || user?.email,
         role: effectiveRole,
       });
-      setScreen(effectiveRole === "admin" ? "adminHome" : effectiveRole === "staff" ? "staffHome" : "userHome");
+      setScreen(getHomeScreen(effectiveRole));
     } catch {
       setProfile({ id: user.id, full_name: user.email || "User", email: user.email, role: "user" });
       setScreen("userHome");

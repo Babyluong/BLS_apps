@@ -29,8 +29,15 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Windows
+Thumbs.db
+*.exe
+*.msi
+*.bat
+
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -38,6 +45,205 @@ yarn-error.*
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS generated files
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.backup
+*.bak
+*~
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Database migration files (keep only essential ones)
+# *.sql
+# *Migration*.js
+# *migrate*.js
+
+# Analysis and debug files
+# analyze*.js
+# debug*.js
+# check*.js
+# fix*.js
+# cleanup*.js
+# investigate*.js
+# troubleshoot*.js
+# test*.js
+# verify*.js
+
+# Auto-generated files
+# auto-*.js
+# *-sync.js
+
+# Documentation files (keep only essential)
+# *.md
+# !README.md
+
+# Scripts and utilities (keep only essential)
+# add*.js
+# create*.js
+# update*.js
+# remove*.js
+# delete*.js
+# run*.js
+# simple*.js
+# smart*.js
+# simulate*.js
+# force*.js
+# get*.js
+# find*.js
+# search*.js
+# compare*.js
+# combine*.js
+# merge*.js
+# resolve*.js
+# restore*.js
+# populate*.js
+# distribute*.js
+# redistribute*.js
+# replace*.js
+# upload*.js
+# sync*.js
+# calculate*.js
+# crossCheck*.js
+# detailed*.js
+# final*.js
+# quick*.js
+# staff*.js
+# manual*.js
+# setup*.js
+# show*.js
+# migrate*.js
+# implement*.js
+# disable*.js
+# drop*.js
+# create*.sql
+# fix*.sql
+# implement*.sql
+# disable*.sql
+# drop*.sql
+# simple*.sql
+# manual*.sql
+# checklist*.sql
+# jawatan*.sql
+# postTest*.sql
+
+# PowerShell scripts
+*.ps1
+
+# Shell scripts (keep only essential)
+# *.sh
+# !git-auto-commit.sh
+
+# Text files
+*.txt
+
+# Backup files
+*backup*
+*Backup*
+
+# Test files
+*test*
+*Test*
+
+# Version files
+*version*
+
+# Snack version (if not needed)
+snack-version/
+
+# Upload folders
+bls-github-upload/
+
+# Old app files
+App-backup.js
+App-test.js
+index-new.js
+
+# Constants and config (keep these)
+# constants.js
+# metro.config.js
+# eas.json
+# app.json
+# package.json
+# package-lock.json
+# index.js
+# App.js
+
+# Core directories (keep these)
+# components/
+# screens/
+# services/
+# lib/
+# utils/
+# styles/
+# assets/
+# src/
+# scripts/ (if contains essential scripts only)

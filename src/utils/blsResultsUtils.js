@@ -109,28 +109,20 @@ export const getChecklistDisplayName = (checklistType) => {
 
 // Process questions from database
 export const processQuestionsFromDatabase = (data, isPostTest = false) => {
-  if (!data || !Array.isArray(data)) return [];
-  
-  return data.map((item, index) => {
-    const question = item.question || `Question ${index + 1}`;
-    const choices = item.choices || [];
-    const correctAnswer = item.correct_answer;
-    const userAnswer = item.user_answer;
-    
+  if (!data || !Array.isArray(data)) {
     return {
-      id: item.id || index,
-      question,
-      choices: choices.map((choice, choiceIndex) => ({
-        id: choiceIndex,
-        text: choice,
-        isCorrect: choiceIndex === correctAnswer,
-        isUserAnswer: choiceIndex === userAnswer
-      })),
-      correctAnswer,
-      userAnswer,
-      isCorrect: userAnswer === correctAnswer
+      pretestStats: [],
+      posttestStats: [],
+      quizByUser: {}
     };
-  });
+  }
+  
+  // For now, return empty stats since we don't have question-level data
+  return {
+    pretestStats: [],
+    posttestStats: [],
+    quizByUser: {}
+  };
 };
 
 // Show highest scorers modal
@@ -248,6 +240,10 @@ export const calculateDashboardStats = (allResults) => {
   };
 
   return {
+    totalParticipants,
+    clinicalCount: clinicalResults.length,
+    nonClinicalCount: nonClinicalResults.length,
+    certifiedCount: allResults.filter(r => r.certified === true).length,
     highestScores,
     passFailStats,
     questionAnalysis: []
@@ -255,10 +251,8 @@ export const calculateDashboardStats = (allResults) => {
 };
 
 // Export to CSV
-export const exportToCSV = async (getFilteredResults, getNewDashboardStats) => {
+export const exportToCSV = (results, filename) => {
   try {
-    const results = getFilteredResults();
-    const stats = getNewDashboardStats();
     
     // Create CSV headers
     const headers = [
@@ -306,13 +300,12 @@ export const exportToCSV = async (getFilteredResults, getNewDashboardStats) => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `bls_results_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `${filename || 'bls_results'}_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
     
-    Alert.alert('Success', 'Results exported to CSV successfully!');
+    console.log('Results exported to CSV successfully!');
   } catch (error) {
     console.error('Error exporting to CSV:', error);
-    Alert.alert('Error', 'Failed to export results. Please try again.');
   }
 };

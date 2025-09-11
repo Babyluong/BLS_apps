@@ -216,67 +216,50 @@ const AllResultsTab = ({
                 {/* Checklist Status Buttons */}
                 <Pressable 
                   style={[styles.cell, styles.cellStatus]}
-                  onPress={() => {
-                    const checklistData = result['one_man_cpr'];
-                    if (checklistData && checklistData.details) {
-                      onViewChecklistDetails(result, 'one-man-cpr');
-                    }
-                  }}
+                  onPress={() => onViewChecklistDetails(result, 'one-man-cpr')}
                 >
                   {renderStatusButton(result.oneManCprPass, result, 'one-man-cpr')}
                 </Pressable>
                 <Pressable 
                   style={[styles.cell, styles.cellStatus]}
-                  onPress={() => {
-                    const checklistData = result['two_man_cpr'];
-                    if (checklistData && checklistData.details) {
-                      onViewChecklistDetails(result, 'two-man-cpr');
-                    }
-                  }}
+                  onPress={() => onViewChecklistDetails(result, 'two-man-cpr')}
                 >
                   {renderStatusButton(result.twoManCprPass, result, 'two-man-cpr')}
                 </Pressable>
                 <Pressable 
                   style={[styles.cell, styles.cellStatus]}
-                  onPress={() => {
-                    const checklistData = result['adult_choking'];
-                    if (checklistData && checklistData.details) {
-                      onViewChecklistDetails(result, 'adult-choking');
-                    }
-                  }}
+                  onPress={() => onViewChecklistDetails(result, 'adult-choking')}
                 >
                   {renderStatusButton(result.adultChokingPass, result, 'adult-choking')}
                 </Pressable>
                 <Pressable 
                   style={[styles.cell, styles.cellStatus]}
-                  onPress={() => {
-                    const checklistData = result['infant_choking'];
-                    if (checklistData && checklistData.details) {
-                      onViewChecklistDetails(result, 'infant-choking');
-                    }
-                  }}
+                  onPress={() => onViewChecklistDetails(result, 'infant-choking')}
                 >
                   {renderStatusButton(result.infantChokingPass, result, 'infant-choking')}
                 </Pressable>
                 <Pressable 
                   style={[styles.cell, styles.cellStatus]}
-                  onPress={() => {
-                    const checklistData = result['infant_cpr'];
-                    if (checklistData && checklistData.details) {
-                      onViewChecklistDetails(result, 'infant-cpr');
-                    }
-                  }}
+                  onPress={() => onViewChecklistDetails(result, 'infant-cpr')}
                 >
                   {renderStatusButton(result.infantCprPass, result, 'infant-cpr')}
                 </Pressable>
                 
                 {/* Test Scores */}
-                <View style={[styles.cell, styles.cellScore]}>
+                <TouchableOpacity 
+                  style={[styles.cell, styles.cellScore]}
+                  onPress={() => onViewQuizDetails(result, 'preTest')}
+                  activeOpacity={0.7}
+                >
                   {renderScore(result.preTestScore, result.category, 'preTest', result)}
-                </View>
-                <View style={[styles.cell, styles.cellScore]}>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.cell, styles.cellScore]}
+                  onPress={() => onViewQuizDetails(result, 'postTest')}
+                  activeOpacity={0.7}
+                >
                   {renderScore(result.postTestScore, result.category, 'postTest', result)}
-                </View>
+                </TouchableOpacity>
                 
                 {/* Remedial Status */}
                 <View style={[styles.cell, styles.cellStatus]}>

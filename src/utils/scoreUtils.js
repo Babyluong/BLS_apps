@@ -1,137 +1,94 @@
-// utils/scoreUtils.js
-// Utility functions for quiz scoring and categorization
+// src/utils/scoreUtils.js
+// Utility functions for scoring and categorization
 
-import { getJawatanCategory } from './jawatanCategoryUtils';
-import { APP_CONFIG, JOB_POSITIONS } from '../config/appConfig';
+import { APP_CONFIG, JOB_POSITIONS } from '../config/appConfig.js';
 
-/**
- * Clinical job positions that require higher pass threshold (25+)
- * Only these 7 positions are considered clinical
- * NOTE: This is now maintained in the database table 'jawatan_categories'
- * DEPRECATED: Use JOB_POSITIONS.CLINICAL from appConfig.js
- */
+// Clinical job positions - centralized from appConfig
 const CLINICAL_JAWATAN = JOB_POSITIONS.CLINICAL;
 
-/**
- * Determine if a user is clinical or non-clinical based on jawatan
- * Uses database table for accurate categorization
- * @param {string} jawatan - User's job position
- * @returns {Promise<string>} - 'clinical' or 'non-clinical'
- */
-export async function getUserCategory(jawatan) {
-  if (!jawatan) return 'non-clinical';
-  
-  try {
-    // Use database table for accurate categorization
-    return await getJawatanCategory(jawatan);
-  } catch (error) {
-    console.error('Error getting user category from database, using fallback:', error);
-    
-    // Fallback to local logic if database fails
-    const jawatanUpper = String(jawatan).toUpperCase().trim();
-    const isClinical = CLINICAL_JAWATAN.some(clinicalJawatan => 
-      jawatanUpper.includes(clinicalJawatan)
-    );
-    
-    return isClinical ? 'clinical' : 'non-clinical';
-  }
-}
-
-/**
- * Synchronous version for backward compatibility
- * @param {string} jawatan - User's job position
- * @returns {string} - 'clinical' or 'non-clinical'
- */
+// Get user category (clinical or non-clinical) - synchronous version
 export function getUserCategorySync(jawatan) {
   if (!jawatan) return 'non-clinical';
   
-  const jawatanUpper = String(jawatan).toUpperCase().trim();
-  const isClinical = CLINICAL_JAWATAN.some(clinicalJawatan => 
-    jawatanUpper.includes(clinicalJawatan)
-  );
-  
-  return isClinical ? 'clinical' : 'non-clinical';
+  const normalizedJawatan = jawatan.toUpperCase().trim();
+  return CLINICAL_JAWATAN.includes(normalizedJawatan) ? 'clinical' : 'non-clinical';
 }
 
-/**
- * Get pass threshold based on user category
- * @param {string} category - 'clinical' or 'non-clinical'
- * @returns {number} - Pass threshold score
- */
+// Get user category (clinical or non-clinical) - async version with database fallback
+export async function getUserCategory(jawatan) {
+  try {
+    // Try to get from database first
+    const { getJawatanCategory } = await import('./jawatanCategoryUtils.js');
+    return await getJawatanCategory(jawatan);
+  } catch (error) {
+    console.warn('Error getting category from database, using fallback:', error);
+    return getUserCategorySync(jawatan);
+  }
+}
+
+// Get pass threshold based on category
 export function getPassThreshold(category) {
-  return category === 'clinical' 
-    ? APP_CONFIG.SCORING.CLINICAL_PASS_THRESHOLD 
-    : APP_CONFIG.SCORING.NON_CLINICAL_PASS_THRESHOLD;
-}
-
-/**
- * Calculate grade based on score and category
- * @param {number} score - User's score (0-30)
- * @param {string} category - 'clinical' or 'non-clinical'
- * @returns {string} - Grade (A, B, C, D, F)
- */
-export function calculateGrade(score, category) {
-  const threshold = getPassThreshold(category);
-  
-  if (score < threshold) {
-    return 'F'; // Fail
-  }
-  
-  // Grade ranges based on category
   if (category === 'clinical') {
-    const grades = APP_CONFIG.SCORING.CLINICAL_GRADES;
-    if (score >= grades.A) return 'A';
-    if (score >= grades.B) return 'B';
-    if (score >= grades.C) return 'C';
-    return 'D';
-  } else {
-    // Non-clinical
-    const grades = APP_CONFIG.SCORING.NON_CLINICAL_GRADES;
-    if (score >= grades.A) return 'A';
-    if (score >= grades.B) return 'B';
-    if (score >= grades.C) return 'C';
-    return 'D';
+    return APP_CONFIG.SCORING.CLINICAL_PASS_THRESHOLD;
   }
+  return APP_CONFIG.SCORING.NON_CLINICAL_PASS_THRESHOLD;
 }
 
-/**
- * Get grade description
- * @param {string} grade - Grade letter
- * @returns {string} - Grade description
- */
-export function getGradeDescription(grade) {
-  const descriptions = {
-    'A': 'Cemerlang | Excellent',
-    'B': 'Baik | Good', 
-    'C': 'Memuaskan | Satisfactory',
-    'D': 'Lulus | Pass',
-    'F': 'Gagal | Fail'
-  };
-  return descriptions[grade] || 'Tidak Diketahui | Unknown';
-}
-
-/**
- * Calculate comprehensive score data
- * @param {number} score - User's score
- * @param {number} total - Total questions
- * @param {string} jawatan - User's job position
- * @returns {Object} - Complete score data
- */
-export function calculateComprehensiveScore(score, total, jawatan) {
-  const category = getUserCategory(jawatan);
-  const threshold = getPassThreshold(category);
-  const percentage = Math.round((score / total) * 100);
-  const grade = calculateGrade(score, category);
-  const passed = score >= threshold;
+// Calculate grade based on score and category
+export function calculateGrade(score, category) {
+  const grades = category === 'clinical' 
+    ? APP_CONFIG.SCORING.CLINICAL_GRADES 
+    : APP_CONFIG.SCORING.NON_CLINICAL_GRADES;
   
-  return {
-    score,
-    total,
-    percentage,
-    category,
-    threshold,
-    grade,
-    passed,
-    gradeDescription: getGradeDescription(grade)
-  };
+  if (score >= grades.A) return 'A';
+  if (score >= grades.B) return 'B';
+  if (score >= grades.C) return 'C';
+  if (score >= grades.D) return 'D';
+  return 'F';
+}
+
+// Check if post test is passing
+export function isPostTestPassing(score, category) {
+  const threshold = getPassThreshold(category);
+  return score >= threshold;
+}
+
+// Get score color based on score and category
+export function getScoreColor(score, category) {
+  const threshold = getPassThreshold(category);
+  
+  if (score >= threshold) {
+    if (score >= (threshold + 5)) return '#4CAF50'; // Green
+    return '#8BC34A'; // Light Green
+  }
+  return '#F44336'; // Red
+}
+
+// Get score text color based on score and category
+export function getScoreTextColor(score, category) {
+  const threshold = getPassThreshold(category);
+  
+  if (score >= threshold) {
+    return '#FFFFFF'; // White
+  }
+  return '#FFFFFF'; // White
+}
+
+// Calculate if remedial is allowed
+export function calculateRemedialAllowed(score, category) {
+  const threshold = getPassThreshold(category);
+  return score < threshold;
+}
+
+// Calculate if certified
+export function calculateCertified(postTestScore, category, checklistResults) {
+  const hasPassingPostTest = isPostTestPassing(postTestScore, category);
+  const hasAllChecklists = checklistResults && 
+    checklistResults.one_man_cpr?.status === 'PASS' && 
+    checklistResults.two_man_cpr?.status === 'PASS' && 
+    checklistResults.adult_choking?.status === 'PASS' && 
+    checklistResults.infant_choking?.status === 'PASS' && 
+    checklistResults.infant_cpr?.status === 'PASS';
+  
+  return hasPassingPostTest && hasAllChecklists;
 }

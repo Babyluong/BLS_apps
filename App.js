@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import supabase from "./services/supabase";
 import { ADMIN } from "./constants";
 import DEBUG_CONFIG from "./src/config/debug";
+import { ROUTES, getHomeScreen, hasPermission, getBackRoute } from "./src/utils/navigationUtils";
 // import ErrorBoundary from "./components/ErrorBoundary";
 
 // Custom Alert function that respects debug config

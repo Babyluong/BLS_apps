@@ -2,21 +2,15 @@
 // Utility functions for quiz scoring and categorization
 
 import { getJawatanCategory } from './jawatanCategoryUtils';
+import { APP_CONFIG, JOB_POSITIONS } from '../config/appConfig';
 
 /**
  * Clinical job positions that require higher pass threshold (25+)
  * Only these 7 positions are considered clinical
  * NOTE: This is now maintained in the database table 'jawatan_categories'
+ * DEPRECATED: Use JOB_POSITIONS.CLINICAL from appConfig.js
  */
-const CLINICAL_JAWATAN = [
-  "PEGAWAI PERUBATAN",
-  "PENOLONG PEGAWAI PERUBATAN",
-  "JURURAWAT",
-  "JURURAWAT MASYARAKAT",
-  "PEMBANTU PERAWATAN KESIHATAN",
-  "PEGAWAI PERGIGIAN",
-  "JURUTERAPI PERGIGIAN"
-];
+const CLINICAL_JAWATAN = JOB_POSITIONS.CLINICAL;
 
 /**
  * Determine if a user is clinical or non-clinical based on jawatan
@@ -65,7 +59,9 @@ export function getUserCategorySync(jawatan) {
  * @returns {number} - Pass threshold score
  */
 export function getPassThreshold(category) {
-  return category === 'clinical' ? 25 : 20;
+  return category === 'clinical' 
+    ? APP_CONFIG.SCORING.CLINICAL_PASS_THRESHOLD 
+    : APP_CONFIG.SCORING.NON_CLINICAL_PASS_THRESHOLD;
 }
 
 /**
@@ -83,15 +79,17 @@ export function calculateGrade(score, category) {
   
   // Grade ranges based on category
   if (category === 'clinical') {
-    if (score >= 28) return 'A';
-    if (score >= 26) return 'B';
-    if (score >= 25) return 'C';
+    const grades = APP_CONFIG.SCORING.CLINICAL_GRADES;
+    if (score >= grades.A) return 'A';
+    if (score >= grades.B) return 'B';
+    if (score >= grades.C) return 'C';
     return 'D';
   } else {
     // Non-clinical
-    if (score >= 27) return 'A';
-    if (score >= 24) return 'B';
-    if (score >= 21) return 'C';
+    const grades = APP_CONFIG.SCORING.NON_CLINICAL_GRADES;
+    if (score >= grades.A) return 'A';
+    if (score >= grades.B) return 'B';
+    if (score >= grades.C) return 'C';
     return 'D';
   }
 }

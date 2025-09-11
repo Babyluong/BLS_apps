@@ -16,79 +16,34 @@ import LuxuryShell from "../components/LuxuryShell";
 import supabase from "../services/supabase";
 import { BRAND1, BRAND2 } from "../../constants";
 import ModalFixed from "../components/ModalFixed";
+import { 
+  JOB_POSITIONS, 
+  WORK_LOCATIONS, 
+  BLS_OPTIONS, 
+  GRADE_CONFIG 
+} from "../config/appConfig";
 
 // ===== Master lists =====
-const TEMPAT_OPTS = [
-  "Hospital Lawas",
-  "KK Lawas",
-  "Hospital Limbang",
-  "Klinik Pergigian Lawas",
-];
-
-const FULL_JAWATAN_LIST = [
-  // Officer level
-  "PEGAWAI PERUBATAN",
-  "PEGAWAI PERGIGIAN",
-  "PEGAWAI FARMASI",
-
-  // Others
-  "PENOLONG PEGAWAI PERUBATAN",
-  "JURURAWAT",
-  "PENOLONG PEGAWAI FARMASI",
-  "JURUTEKNOLOGI MAKMAL PERUBATAN",
-  "JURUPULIH PERUBATAN CARAKERJA",
-  "JURUPULIH FISIOTERAPI",
-  "JURU-XRAY",
-  "PENOLONG PEGAWAI TADBIR",
-  "PEMBANTU KHIDMAT AM",
-  "PEMBANTU TADBIR",
-  "PEMBANTU PERAWATAN KESIHATAN",
-  "JURURAWAT MASYARAKAT",
-  "PEMBANTU PENYEDIAAN MAKANAN",
-  "PENOLONG JURUTERA",
-];
+const TEMPAT_OPTS = WORK_LOCATIONS;
+const FULL_JAWATAN_LIST = JOB_POSITIONS.ALL;
 
 // Officer grades (unchanged)
-const UD_GRADES = ["UD 9", "UD 10", "UD 11", "UD 12", "UD 13"];
-const UG_GRADES = ["UG 9", "UG 10", "UG 11", "UG 12", "UG 13"];
-const UF_GRADES = ["UF 9", "UF 10", "UF 11", "UF 12", "UF 13"];
+const UD_GRADES = GRADE_CONFIG.UD_GRADES;
+const UG_GRADES = GRADE_CONFIG.UG_GRADES;
+const UF_GRADES = GRADE_CONFIG.UF_GRADES;
 
 // New grouped grades
-const G_U5_7 = ["U5", "U6", "U7"];
-const G_U1_4 = ["U1", "U2", "U3", "U4"];
-const G_H1_4 = ["H1", "H2", "H3", "H4"];
-const G_N1_4 = ["N1", "N2", "N3", "N4"];
-const G_J5_7 = ["J5", "J6", "J7"];
+const G_U5_7 = GRADE_CONFIG.G_U5_7;
+const G_U1_4 = GRADE_CONFIG.G_U1_4;
+const G_H1_4 = GRADE_CONFIG.G_H1_4;
+const G_N1_4 = GRADE_CONFIG.G_N1_4;
+const G_J5_7 = GRADE_CONFIG.G_J5_7;
 
 // Title groups → grade families
-const TITLES_U5_7 = [
-  "PENOLONG PEGAWAI PERUBATAN",
-  "JURURAWAT",
-  "PENOLONG PEGAWAI FARMASI",
-  "JURUTEKNOLOGI MAKMAL PERUBATAN",
-  "JURUPULIH PERUBATAN CARAKERJA",
-  "JURUPULIH FISIOTERAPI",
-  "JURU-XRAY",
-];
-
-const TITLES_H1_4_OR_N1_4 = [
-  "PENOLONG PEGAWAI TADBIR",
-  "PEMBANTU KHIDMAT AM",
-  "PEMBANTU TADBIR",
-];
-
-const TITLES_U1_4 = [
-  "PEMBANTU PERAWATAN KESIHATAN",
-  "JURURAWAT MASYARAKAT",
-  "PEMBANTU PENYEDIAAN MAKANAN",
-];
-
-const TITLES_J5_7 = ["PENOLONG JURUTERA"];
-
-// Tahun BLS 2015 → current year (+ “Pertama Kali” at top)
-const currentYear = new Date().getFullYear();
-const BLS_YEARS = Array.from({ length: currentYear - 2015 + 1 }, (_, i) => String(2015 + i));
-const BLS_OPTIONS = ["Pertama Kali", ...BLS_YEARS];
+const TITLES_U5_7 = GRADE_CONFIG.TITLES_U5_7;
+const TITLES_H1_4_OR_N1_4 = GRADE_CONFIG.TITLES_H1_4_OR_N1_4;
+const TITLES_U1_4 = GRADE_CONFIG.TITLES_U1_4;
+const TITLES_J5_7 = GRADE_CONFIG.TITLES_J5_7;
 
 export default function AddUserScreen({ onBack, onSignOut }) {
   // Form state

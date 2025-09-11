@@ -1,10 +1,9 @@
 @echo off
-echo Starting Auto-Sync for BLS Lawas Project...
+echo Starting Auto Git Sync...
+echo This will automatically commit and push your changes to GitHub
+echo Press Ctrl+C to stop
 echo.
-echo This will automatically commit and push changes to GitHub
-echo when you save files in Cursor.
-echo.
-echo Press Ctrl+C to stop auto-sync
-echo.
-node auto-sync.js
+
+node auto-git-sync.js
+
 pause

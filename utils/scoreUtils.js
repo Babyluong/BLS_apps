@@ -3,14 +3,15 @@
 
 /**
  * Clinical job positions that require higher pass threshold (25+)
+ * Only these 7 positions are considered clinical
  */
 const CLINICAL_JAWATAN = [
   "PEGAWAI PERUBATAN",
   "PENOLONG PEGAWAI PERUBATAN",
   "JURURAWAT",
   "JURURAWAT MASYARAKAT",
-  "PEGAWAI PERGIGIAN",
   "PEMBANTU PERAWATAN KESIHATAN",
+  "PEGAWAI PERGIGIAN",
   "JURUTERAPI PERGIGIAN"
 ];
 

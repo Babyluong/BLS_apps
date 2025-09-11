@@ -2981,6 +2981,102 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+
+  // Highest Scorers Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#f5ead1',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 5,
+    marginLeft: 10,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: '#d7ccb7',
+    fontWeight: 'bold',
+  },
+  modalBody: {
+    maxHeight: 400,
+  },
+  scorerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    marginBottom: 10,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  rankContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#4a4a4a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  rankText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#f5ead1',
+  },
+  scorerInfo: {
+    flex: 1,
+  },
+  scorerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#f5ead1',
+    marginBottom: 4,
+  },
+  scorerScore: {
+    fontSize: 14,
+    color: '#d7ccb7',
+    marginBottom: 2,
+  },
+  scorerCategory: {
+    fontSize: 12,
+    color: '#999',
+    textTransform: 'capitalize',
+  },
+  noDataContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#d7ccb7',
+    textAlign: 'center',
+  },
 });
 
 export { styles };

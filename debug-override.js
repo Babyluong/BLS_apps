@@ -23,5 +23,9 @@ if (originalAlert) {
   };
 }
 
+// Override window.alert globally
+const originalWindowAlert = window.alert;
+window.alert = () => {}; // Disable all window alerts
+
 // Export original methods in case you need them
 export { originalConsole, originalAlert };

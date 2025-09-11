@@ -6,13 +6,15 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
-  Modal
+  Modal,
+  StyleSheet
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LuxuryShell from '../components/LuxuryShell';
 import CertificateScreen from './CertificateScreen';
 import supabase from '../services/supabase';
-import { getUserCategory } from '../utils/scoreUtils';
+import { getUserCategory, getUserCategorySync } from '../utils/scoreUtils';
+import { getJawatanCategory } from '../utils/jawatanCategoryUtils';
 
 // Import new components
 import AllResultsTab from '../components/AllResultsTab';
@@ -161,8 +163,18 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
       }
 
       // Process results into the expected format
-      const processedResults = (blsResults || []).map(result => {
+      const processedResults = await Promise.all((blsResults || []).map(async (result) => {
         const profile = profileMap.get(result.user_id);
+        const jawatan = profile?.jawatan || 'N/A';
+        
+        // Use database categorization with fallback to sync version
+        let category = 'non-clinical';
+        try {
+          category = await getJawatanCategory(jawatan);
+        } catch (error) {
+          console.warn('Error getting category from database, using fallback:', error);
+          category = getUserCategorySync(jawatan);
+        }
         
         return {
           id: result.id,
@@ -171,9 +183,9 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
           participant_name: result.participant_name || 'Unknown',
           participantName: result.participant_name || 'Unknown', // For component compatibility
           participantIc: result.participant_ic || 'N/A', // For component compatibility
-          jawatan: profile?.jawatan || 'N/A',
+          jawatan: jawatan,
           role: profile?.role || 'user',
-          category: profile?.jawatan?.toLowerCase().includes('jururawat') || profile?.jawatan?.toLowerCase().includes('perubatan') ? 'clinical' : 'non-clinical',
+          category: category,
           date: result.created_at ? new Date(result.created_at).toLocaleDateString() : 'N/A',
           
           // Pre-test data
@@ -466,11 +478,11 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
 
     switch (filterType) {
       case 'clinical':
-        filtered = allResults.filter(r => r.jawatan?.toLowerCase().includes('nurse') || r.jawatan?.toLowerCase().includes('doctor'));
+        filtered = allResults.filter(r => r.category === 'clinical');
         setSelectedCategory('Clinical Staff');
         break;
       case 'non-clinical':
-        filtered = allResults.filter(r => !r.jawatan?.toLowerCase().includes('nurse') && !r.jawatan?.toLowerCase().includes('doctor'));
+        filtered = allResults.filter(r => r.category === 'non-clinical');
         setSelectedCategory('Non-Clinical Staff');
         break;
       case 'pre-test-pass':
@@ -854,8 +866,62 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
           quizData={selectedQuiz}
         />
 
+        {/* Highest Scorers Modal */}
+        <Modal
+          visible={showParticipantModal !== false}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowParticipantModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{selectedCategory}</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowParticipantModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalBody}>
+                {Array.isArray(showParticipantModal) && showParticipantModal.length > 0 ? (
+                  showParticipantModal.map((participant, index) => {
+                    const testType = activeTab === 'pretest' ? 'preTest' : 'postTest';
+                    const scoreField = testType === 'preTest' ? 'preTestScore' : 'postTestScore';
+                    const score = participant[scoreField] || 0;
+                    
+                    return (
+                      <View key={participant.id || index} style={styles.scorerItem}>
+                        <View style={styles.rankContainer}>
+                          <Text style={styles.rankText}>#{index + 1}</Text>
+                        </View>
+                        <View style={styles.scorerInfo}>
+                          <Text style={styles.scorerName}>{participant.participantName || 'Unknown'}</Text>
+                          <Text style={styles.scorerScore}>Score: {score}%</Text>
+                          <Text style={styles.scorerCategory}>
+                            {participant.category === 'clinical' ? 'Clinical' : 'Non-Clinical'}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.noDataContainer}>
+                    <Text style={styles.noDataText}>
+                      {selectedCategory || 'No data available'}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
         {/* Add other modals here as needed */}
       </View>
     </LuxuryShell>
   );
 }
+

@@ -139,22 +139,20 @@ export const showHighestScorers = (category, allResults, activeTab, setSelectedC
     const testType = activeTab === 'pretest' ? 'preTest' : 'postTest';
     const scoreField = testType === 'preTest' ? 'preTestScore' : 'postTestScore';
     
-    console.log('🔍 DEBUG: showHighestScorers called', { category, testType, scoreField });
-    console.log('🔍 DEBUG: allResults length:', allResults.length);
+    // console.log('🔍 DEBUG: showHighestScorers called', { category, testType, scoreField });
+    // console.log('🔍 DEBUG: allResults length:', allResults.length);
     
     const categoryResults = allResults.filter(r => r.category === category);
-    console.log('🔍 DEBUG: categoryResults length:', categoryResults.length);
+    // console.log('🔍 DEBUG: categoryResults length:', categoryResults.length);
     
     // Filter participants who actually took the test
     const testParticipants = categoryResults.filter(r => r[scoreField] !== null && r[scoreField] !== undefined);
-    console.log('🔍 DEBUG: testParticipants length:', testParticipants.length);
+    // console.log('🔍 DEBUG: testParticipants length:', testParticipants.length);
     
     if (testParticipants.length === 0) {
-      Alert.alert(
-        `Top ${category === 'clinical' ? 'Clinical' : 'Non-Clinical'} Scorers`,
-        `No ${category} participants have taken the ${testType === 'preTest' ? 'pre-test' : 'post-test'} yet.`,
-        [{ text: 'OK' }]
-      );
+      // Instead of alert, set a message in the modal
+      setSelectedCategory(`No ${category} participants have taken the ${testType === 'preTest' ? 'pre-test' : 'post-test'} yet.`);
+      setShowParticipantModal([]);
       return;
     }
     
@@ -164,28 +162,29 @@ export const showHighestScorers = (category, allResults, activeTab, setSelectedC
     // Get top 3
     const top3 = sortedParticipants.slice(0, 3);
     
-    console.log('🔍 DEBUG: Top 3 participants:', top3.map(p => ({ name: p.participantName, score: p[scoreField] })));
+    // console.log('🔍 DEBUG: Top 3 participants:', top3.map(p => ({ name: p.participantName, score: p[scoreField] })));
     
     // Set the filtered results and show modal
     setSelectedCategory(`Top 3 ${category === 'clinical' ? 'Clinical' : 'Non-Clinical'} Scorers`);
     setShowParticipantModal(top3);
     
   } catch (error) {
-    console.error('❌ Error in showHighestScorers:', error);
-    Alert.alert('Error', 'Failed to load highest scorers. Please try again.');
+    // console.error('❌ Error in showHighestScorers:', error);
+    setSelectedCategory('Error: Failed to load highest scorers');
+    setShowParticipantModal([]);
   }
 };
 
 // Calculate dashboard statistics
 export const calculateDashboardStats = (allResults) => {
-  alert(`🔍 DEBUG: calculateDashboardStats called with allResults.length: ${allResults.length}`);
-  console.log("🔍 DEBUG: calculateDashboardStats called with allResults:", allResults);
-  console.log("🔍 DEBUG: allResults.length:", allResults.length);
-  console.log("🔍 DEBUG: allResults sample:", allResults.slice(0, 2));
+  // alert(`🔍 DEBUG: calculateDashboardStats called with allResults.length: ${allResults.length}`);
+  // console.log("🔍 DEBUG: calculateDashboardStats called with allResults:", allResults);
+  // console.log("🔍 DEBUG: allResults.length:", allResults.length);
+  // console.log("🔍 DEBUG: allResults sample:", allResults.slice(0, 2));
   
   // EMERGENCY FIX - Force the counts to work
   if (allResults.length > 0) {
-    alert(`🔍 EMERGENCY FIX: Forcing counts - totalParticipants: ${allResults.length}`);
+    // alert(`🔍 EMERGENCY FIX: Forcing counts - totalParticipants: ${allResults.length}`);
     return {
       totalParticipants: allResults.length,
       clinicalCount: Math.floor(allResults.length * 0.4),

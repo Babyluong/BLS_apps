@@ -1,30 +1,57 @@
 // utils/scoreUtils.js
 // Utility functions for quiz scoring and categorization
 
+import { getJawatanCategory } from './jawatanCategoryUtils';
+
 /**
  * Clinical job positions that require higher pass threshold (25+)
+ * Only these 7 positions are considered clinical
+ * NOTE: This is now maintained in the database table 'jawatan_categories'
  */
 const CLINICAL_JAWATAN = [
   "PEGAWAI PERUBATAN",
   "PENOLONG PEGAWAI PERUBATAN",
   "JURURAWAT",
   "JURURAWAT MASYARAKAT",
-  "PEGAWAI PERGIGIAN",
   "PEMBANTU PERAWATAN KESIHATAN",
+  "PEGAWAI PERGIGIAN",
   "JURUTERAPI PERGIGIAN"
 ];
 
 /**
  * Determine if a user is clinical or non-clinical based on jawatan
+ * Uses database table for accurate categorization
+ * @param {string} jawatan - User's job position
+ * @returns {Promise<string>} - 'clinical' or 'non-clinical'
+ */
+export async function getUserCategory(jawatan) {
+  if (!jawatan) return 'non-clinical';
+  
+  try {
+    // Use database table for accurate categorization
+    return await getJawatanCategory(jawatan);
+  } catch (error) {
+    console.error('Error getting user category from database, using fallback:', error);
+    
+    // Fallback to local logic if database fails
+    const jawatanUpper = String(jawatan).toUpperCase().trim();
+    const isClinical = CLINICAL_JAWATAN.some(clinicalJawatan => 
+      jawatanUpper.includes(clinicalJawatan)
+    );
+    
+    return isClinical ? 'clinical' : 'non-clinical';
+  }
+}
+
+/**
+ * Synchronous version for backward compatibility
  * @param {string} jawatan - User's job position
  * @returns {string} - 'clinical' or 'non-clinical'
  */
-export function getUserCategory(jawatan) {
+export function getUserCategorySync(jawatan) {
   if (!jawatan) return 'non-clinical';
   
   const jawatanUpper = String(jawatan).toUpperCase().trim();
-  
-  // Check if any clinical jawatan is contained in the user's jawatan
   const isClinical = CLINICAL_JAWATAN.some(clinicalJawatan => 
     jawatanUpper.includes(clinicalJawatan)
   );

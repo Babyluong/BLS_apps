@@ -504,14 +504,13 @@ export default function App() {
       );
     }
     const r = role();
-    const allowed = ALLOWED[r] || ALLOWED.user;
-    if (!allowed.has(screen)) return PAGES[homeFor(r)];
+    if (!hasPermission(r, screen)) return PAGES[getHomeScreen(r)];
     return PAGES[screen] || (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: "#f5ead1" }}>No page registered for: {String(screen)}</Text>
       </View>
     );
-  }, [screen, isLoggingIn, loginError, handleLogin, role, ALLOWED, homeFor, PAGES]);
+  }, [screen, isLoggingIn, loginError, handleLogin, role, PAGES]);
 
   return (
     <ErrorBoundary>

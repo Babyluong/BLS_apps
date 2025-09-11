@@ -136,43 +136,19 @@ export default function App() {
 
   // ===== Memoized Role guard =====
   const role = useCallback(() => String(profile?.role || "user").toLowerCase(), [profile?.role]);
-  const homeFor = useCallback((r) => (r === "admin" ? "adminHome" : r === "staff" ? "staffHome" : "userHome"), []);
-
-  const ALLOWED = useMemo(() => ({
-    admin: new Set([
-      "adminHome", "adminMenu",
-      "addStaff", "addUser", "listStaff", "listUsers",
-      "editProfiles", "deleteProfiles", "adminTools", "activityLogs",
-      "oneTapImportUsers",
-      "importQuestions", "editQuestions",
-      // NEW BLS Test routes
-      "blsTest", "blsChecklist", "blsChecklistEdit", "blsResults", "quizResults", "oneManCPR", "twoManCPR", "infantCPR", "adultChoking", "infantChoking", "preTestQuestions", "postTestQuestions",
-    ]),
-    staff: new Set([
-      "staffHome",
-      // Staff can use BLS features
-      "blsTest", "blsChecklist", "blsResults", "quizResults", "oneManCPR", "twoManCPR", "infantCPR", "adultChoking", "infantChoking", "preTestQuestions", "postTestQuestions",
-    ]),
-    user: new Set([
-      "userHome",
-      // Users can only use BLS Test
-      "blsTest", "quizResults", "preTestQuestions", "postTestQuestions",
-    ]),
-  }), []);
 
   const safeNavigate = useCallback((target) => {
     const r = role();
-    const allowed = ALLOWED[r] || ALLOWED.user;
-    if (!allowed.has(target)) {
+    if (!hasPermission(r, target)) {
       CustomAlert("No access", "You don't have permission to open that page.");
-      setScreen(homeFor(r));
+      setScreen(getHomeScreen(r));
       return;
     }
     setScreen(target);
-  }, [role, ALLOWED, homeFor]);
+  }, [role]);
   
-  const goHome = useCallback(() => { setScreen(homeFor(role())); }, [homeFor, role]);
-  const backToMenu = useCallback(() => safeNavigate("adminMenu"), [safeNavigate]);
+  const goHome = useCallback(() => { setScreen(getHomeScreen(role())); }, [role]);
+  const backToMenu = useCallback(() => safeNavigate(ROUTES.ADMIN_MENU), [safeNavigate]);
 
   useEffect(() => {
     const r = role();

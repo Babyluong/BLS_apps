@@ -231,7 +231,7 @@ export default function App() {
       setScreen(getHomeScreen(effectiveRole));
     } catch {
       setProfile({ id: user.id, full_name: user.email || "User", email: user.email, role: "user" });
-      setScreen("userHome");
+      setScreen(getHomeScreen("user"));
     }
   }, [isAdminByCreds]);
 

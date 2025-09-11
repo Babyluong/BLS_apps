@@ -1,4 +1,7 @@
 // App.js — IC-first Auth + guarded routing (no local-admin bypass) + Back → Admin Menu
+// Load debug override first to disable all debug output
+import "./debug-override";
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   View, StatusBar, SafeAreaView, StyleSheet, Animated, Easing,

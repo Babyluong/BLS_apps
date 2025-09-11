@@ -7,7 +7,15 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import supabase from "./services/supabase";
 import { ADMIN } from "./constants";
+import DEBUG_CONFIG from "./src/config/debug";
 // import ErrorBoundary from "./components/ErrorBoundary";
+
+// Custom Alert function that respects debug config
+const CustomAlert = (title, message) => {
+  if (DEBUG_CONFIG.ENABLE_ALERTS) {
+    Alert.alert(title, message);
+  }
+};
 
 // Simple inline ErrorBoundary to avoid import issues
 class ErrorBoundary extends React.Component {

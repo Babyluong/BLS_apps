@@ -2972,6 +2972,158 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#2c2c2c',
+    borderRadius: 12,
+    padding: 0,
+    width: '100%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#00ffc8',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+  },
+  modalTitle: {
+    color: '#00ffc8',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#ff4757',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalBody: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  participantInfo: {
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+  },
+  participantName: {
+    color: '#e9ddc4',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  participantId: {
+    color: '#8a7f6a',
+    fontSize: 14,
+    marginBottom: 3,
+  },
+  participantJawatan: {
+    color: '#8a7f6a',
+    fontSize: 14,
+    marginBottom: 3,
+  },
+  participantCategory: {
+    color: '#8a7f6a',
+    fontSize: 14,
+  },
+  statusContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  detailsContainer: {
+    marginBottom: 20,
+  },
+  detailsTitle: {
+    color: '#e9ddc4',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  detailsSection: {
+    marginBottom: 15,
+  },
+  detailsSubtitle: {
+    color: '#00ffc8',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  detailsItem: {
+    color: '#e9ddc4',
+    fontSize: 14,
+    marginLeft: 10,
+    marginBottom: 3,
+  },
+  scoreContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: 'rgba(0, 255, 200, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 200, 0.3)',
+  },
+  scoreTitle: {
+    color: '#00ffc8',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  scoreValue: {
+    color: '#e9ddc4',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  scoreDate: {
+    color: '#8a7f6a',
+    fontSize: 14,
+  },
+  scoreAnalysis: {
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+  },
+  analysisTitle: {
+    color: '#e9ddc4',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  analysisText: {
+    color: '#e9ddc4',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  analysisNote: {
+    color: '#8a7f6a',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
 });
 
 export { styles };

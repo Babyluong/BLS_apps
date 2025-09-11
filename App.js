@@ -1,4 +1,5 @@
 // App.js — IC-first Auth + guarded routing (no local-admin bypass) + Back → Admin Menu
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   View, StatusBar, SafeAreaView, StyleSheet, Animated, Easing,
@@ -7,7 +8,16 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import supabase from "./services/supabase";
 import { ADMIN } from "./constants";
+import DEBUG_CONFIG from "./src/config/debug";
+import { ROUTES, getHomeScreen, hasPermission, getBackRoute } from "./src/utils/navigationUtils";
 // import ErrorBoundary from "./components/ErrorBoundary";
+
+// Custom Alert function that respects debug config
+const CustomAlert = (title, message) => {
+  if (DEBUG_CONFIG.ENABLE_ALERTS) {
+    Alert.alert(title, message);
+  }
+};
 
 // Simple inline ErrorBoundary to avoid import issues
 class ErrorBoundary extends React.Component {
@@ -21,7 +31,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
   render() {
@@ -124,48 +134,25 @@ export default function App() {
 
   // ===== Memoized Role guard =====
   const role = useCallback(() => String(profile?.role || "user").toLowerCase(), [profile?.role]);
-  const homeFor = useCallback((r) => (r === "admin" ? "adminHome" : r === "staff" ? "staffHome" : "userHome"), []);
-
-  const ALLOWED = useMemo(() => ({
-    admin: new Set([
-      "adminHome", "adminMenu",
-      "addStaff", "addUser", "listStaff", "listUsers",
-      "editProfiles", "deleteProfiles", "adminTools", "activityLogs",
-      "oneTapImportUsers",
-      "importQuestions", "editQuestions",
-      // NEW BLS Test routes
-      "blsTest", "blsChecklist", "blsChecklistEdit", "blsResults", "quizResults", "oneManCPR", "twoManCPR", "infantCPR", "adultChoking", "infantChoking", "preTestQuestions", "postTestQuestions",
-    ]),
-    staff: new Set([
-      "staffHome",
-      // Staff can use BLS features
-      "blsTest", "blsChecklist", "blsResults", "quizResults", "oneManCPR", "twoManCPR", "infantCPR", "adultChoking", "infantChoking", "preTestQuestions", "postTestQuestions",
-    ]),
-    user: new Set([
-      "userHome",
-      // Users can only use BLS Test
-      "blsTest", "quizResults", "preTestQuestions", "postTestQuestions",
-    ]),
-  }), []);
 
   const safeNavigate = useCallback((target) => {
     const r = role();
-    const allowed = ALLOWED[r] || ALLOWED.user;
-    if (!allowed.has(target)) {
-      Alert.alert("No access", "You don't have permission to open that page.");
-      setScreen(homeFor(r));
+    if (!hasPermission(r, target)) {
+      CustomAlert("No access", "You don't have permission to open that page.");
+      setScreen(getHomeScreen(r));
       return;
     }
     setScreen(target);
-  }, [role, ALLOWED, homeFor]);
+  }, [role]);
   
-  const goHome = useCallback(() => { setScreen(homeFor(role())); }, [homeFor, role]);
-  const backToMenu = useCallback(() => safeNavigate("adminMenu"), [safeNavigate]);
+  const goHome = useCallback(() => { setScreen(getHomeScreen(role())); }, [role]);
+  const backToMenu = useCallback(() => safeNavigate(ROUTES.ADMIN_MENU), [safeNavigate]);
 
   useEffect(() => {
     const r = role();
-    const allowed = ALLOWED[r] || ALLOWED.user;
-    if (screen !== "login" && !allowed.has(screen)) setScreen(homeFor(r));
+    if (screen !== "login" && !hasPermission(r, screen)) {
+      setScreen(getHomeScreen(r));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, profile?.role]);
 
@@ -239,10 +226,10 @@ export default function App() {
         email: prof?.email || user?.email,
         role: effectiveRole,
       });
-      setScreen(effectiveRole === "admin" ? "adminHome" : effectiveRole === "staff" ? "staffHome" : "userHome");
+      setScreen(getHomeScreen(effectiveRole));
     } catch {
       setProfile({ id: user.id, full_name: user.email || "User", email: user.email, role: "user" });
-      setScreen("userHome");
+      setScreen(getHomeScreen("user"));
     }
   }, [isAdminByCreds]);
 
@@ -265,21 +252,21 @@ export default function App() {
 
   // ===== Debug function to check database contents =====
   const debugDatabase = useCallback(async () => {
-    console.log("🔍 DEBUG: Checking all profiles...");
+    // console.log("🔍 DEBUG: Checking all profiles...");
     const { data: allProfiles, error: profilesError } = await supabase
       .from("profiles")
       .select("full_name, ic, role")
       .order("full_name");
     
-    console.log("📊 All Profiles:", { allProfiles, profilesError });
+    // console.log("📊 All Profiles:", { allProfiles, profilesError });
     
-    console.log("🔍 DEBUG: Checking all users [CACHE_FIXED]...");
+    // console.log("🔍 DEBUG: Checking all users [CACHE_FIXED]...");
     const { data: allUsers, error: usersError } = await supabase
       .from("profiles")
       .select("full_name, ic, jawatan")
       .order("full_name");
     
-    console.log("📊 All Users:", { allUsers, usersError });
+    // console.log("📊 All Users:", { allUsers, usersError });
   }, []);
 
   // ===== iOS-compatible string normalization =====
@@ -331,43 +318,43 @@ export default function App() {
     const email = adminEmailFor(passwordIC);
     const isAdmin = isAdminByCreds({ fullName, ic: passwordIC, email });
 
-    console.log("🚀 App.js Login Debug:", { 
-      platform: Platform?.OS || 'unknown',
-      name, 
-      ic, 
-      fullName, 
-      passwordIC, 
-      email, 
-      isAdmin,
-      normalizedName: normalizeString(fullName)
-    });
+    // console.log("🚀 App.js Login Debug:", { 
+    //   platform: Platform?.OS || 'unknown',
+    //   name, 
+    //   ic, 
+    //   fullName, 
+    //   passwordIC, 
+    //   email, 
+    //   isAdmin,
+    //   normalizedName: normalizeString(fullName)
+    // });
 
     // Debug: Check database contents
     await debugDatabase();
 
     try {
       // 1) Try normal sign-in
-      console.log("🔐 App.js Supabase Auth Attempt:", { email, passwordIC });
+      // console.log("🔐 App.js Supabase Auth Attempt:", { email, passwordIC });
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: passwordIC });
       
       if (!error && data?.user) {
-        console.log("✅ App.js Supabase auth successful");
+        // console.log("✅ App.js Supabase auth successful");
         const prof = await ensureProfileForUser(data.user, fullName, passwordIC);
         const r = isAdmin ? "admin" : String(prof.role || "user").toLowerCase();
 
         if (isAdmin) { try { await supabase.from("profiles").update({ role: "admin" }).eq("id", data.user.id); } catch {} }
 
         setProfile({ id: data.user.id, full_name: prof.full_name, email: prof.email || email, role: r });
-        setScreen(r === "admin" ? "adminHome" : r === "staff" ? "staffHome" : "userHome");
+        setScreen(getHomeScreen(r));
         setIsLoggingIn(false);
         return;
       } else {
-        console.log("❌ App.js Supabase auth failed:", error?.message);
+        // console.log("❌ App.js Supabase auth failed:", error?.message);
       }
 
       // 2) Directory check (name+IC exist in users or profiles table)
       const wantName = fullName.toUpperCase();
-      console.log("🔍 App.js Database Check [V2.0 - FIXED]:", { wantName, passwordIC });
+      // console.log("🔍 App.js Database Check [V2.0 - FIXED]:", { wantName, passwordIC });
       
     // Check users table for regular users [FORCE_RELOAD_2025]
     const { data: userData, error: userError } = await supabase
@@ -376,7 +363,7 @@ export default function App() {
       .eq("ic", passwordIC)
       .single();
 
-    console.log("📊 App.js User Query Result:", { userData, userError });
+    // console.log("📊 App.js User Query Result:", { userData, userError });
 
     // Check profiles table for staff members
     const { data: staffData, error: staffError } = await supabase
@@ -386,7 +373,7 @@ export default function App() {
       .eq("role", "staff")
       .single();
 
-    console.log("👥 App.js Staff Query Result:", { staffData, staffError });
+    // console.log("👥 App.js Staff Query Result:", { staffData, staffError });
     
     // Debug: Let's also check all profiles with this IC regardless of role
     const { data: allProfilesData, error: allProfilesError } = await supabase
@@ -394,7 +381,7 @@ export default function App() {
       .select("full_name, ic, role")
       .eq("ic", passwordIC);
     
-    console.log("🔍 App.js All Profiles with IC:", { allProfilesData, allProfilesError });
+    // console.log("🔍 App.js All Profiles with IC:", { allProfilesData, allProfilesError });
     
     // Debug: Let's also check what profiles exist with similar names
     const { data: similarNameData, error: similarNameError } = await supabase
@@ -402,23 +389,23 @@ export default function App() {
       .select("full_name, ic, role")
       .ilike("full_name", `%${fullName.split(' ')[0]}%`);
     
-    console.log("🔍 App.js Similar Names:", { similarNameData, similarNameError });
+    // console.log("🔍 App.js Similar Names:", { similarNameData, similarNameError });
 
     // Use flexible name matching for iOS compatibility
     const userExists = userData && isNameMatch(fullName, userData.full_name);
     const staffExists = staffData && isNameMatch(fullName, staffData.full_name);
     
-    console.log("🔍 App.js Name Matching Debug:", {
-      wantName,
-      userDataName: userData?.full_name,
-      staffDataName: staffData?.full_name,
-      userExists,
-      staffExists,
-      inputName: fullName,
-      normalizedInput: normalizeString(fullName),
-      normalizedUserDb: userData ? normalizeString(userData.full_name) : null,
-      normalizedStaffDb: staffData ? normalizeString(staffData.full_name) : null
-    });
+    // console.log("🔍 App.js Name Matching Debug:", {
+    //   wantName,
+    //   userDataName: userData?.full_name,
+    //   staffDataName: staffData?.full_name,
+    //   userExists,
+    //   staffExists,
+    //   inputName: fullName,
+    //   normalizedInput: normalizeString(fullName),
+    //   normalizedUserDb: userData ? normalizeString(userData.full_name) : null,
+    //   normalizedStaffDb: staffData ? normalizeString(staffData.full_name) : null
+    // });
 
     if (!userExists && !staffExists) {
       // Try to find similar names for better error message
@@ -434,7 +421,7 @@ export default function App() {
         .ilike("full_name", `%${fullName.split(' ')[0]}%`)
         .limit(3);
       
-      console.log("🔍 Similar names found:", { similarUsers, similarStaff });
+      // console.log("🔍 Similar names found:", { similarUsers, similarStaff });
       
       setLoginError(`User not found. Please check your name and IC number.${Platform?.OS === 'ios' ? ' (iOS)' : ''}`);
       setIsLoggingIn(false);
@@ -453,7 +440,7 @@ export default function App() {
       if (isStaff) { try { await supabase.from("profiles").update({ role: "staff" }).eq("id", authUser.id); } catch {} }
 
       setProfile({ id: authUser.id, full_name: prof.full_name, email: prof.email || email, role: r });
-      setScreen(r === "admin" ? "adminHome" : r === "staff" ? "staffHome" : "userHome");
+      setScreen(getHomeScreen(r));
       setIsLoggingIn(false);
     } catch {
       setLoginError("Wrong login credential");
@@ -469,38 +456,38 @@ export default function App() {
 
   // ===== Memoized Pages (Back from ALL admin subpages → Admin Menu) =====
   const PAGES = useMemo(() => ({
-    adminHome:   <AdminHomeScreen onSignOut={handleSignOut} onNavigate={safeNavigate} />,
-    adminMenu:   <AdminMenuScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.ADMIN_HOME]:   <AdminHomeScreen onSignOut={handleSignOut} onNavigate={safeNavigate} />,
+    [ROUTES.ADMIN_MENU]:   <AdminMenuScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
 
-    addStaff:        <AddStaffScreen        onSignOut={handleSignOut} onBack={backToMenu} />,
-    addUser:         <AddUserScreen         onSignOut={handleSignOut} onBack={backToMenu} />,
-    listStaff:       <ListStaffScreen       onSignOut={handleSignOut} onBack={backToMenu} />,
-    listUsers:       <ListUsersScreen       onSignOut={handleSignOut} onBack={backToMenu} />,
-    editProfiles:    <EditProfilesScreen    onSignOut={handleSignOut} onBack={backToMenu} />,
-    deleteProfiles:  <DeleteProfilesScreen  onSignOut={handleSignOut} onBack={backToMenu} />,
-    adminTools:      <AdminToolsScreen      onSignOut={handleSignOut} onBack={backToMenu} onNavigate={safeNavigate} />,
-    activityLogs:    <ActivityLogsScreen    onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.ADD_STAFF]:        <AddStaffScreen        onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.ADD_USER]:         <AddUserScreen         onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.LIST_STAFF]:       <ListStaffScreen       onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.LIST_USERS]:       <ListUsersScreen       onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.EDIT_PROFILES]:    <EditProfilesScreen    onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.DELETE_PROFILES]:  <DeleteProfilesScreen  onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.ADMIN_TOOLS]:      <AdminToolsScreen      onSignOut={handleSignOut} onBack={backToMenu} onNavigate={safeNavigate} />,
+    [ROUTES.ACTIVITY_LOGS]:    <ActivityLogsScreen    onSignOut={handleSignOut} onBack={backToMenu} />,
 
-    oneTapImportUsers:   <OneTapImportUsersScreen   onSignOut={handleSignOut} onBack={backToMenu} />,
-    importQuestions:     <OneTapImportQuestionsScreen onSignOut={handleSignOut} onBack={backToMenu} />,
-    editQuestions:       <EditQuestionsScreen         onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.ONE_TAP_IMPORT_USERS]:   <OneTapImportUsersScreen   onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.IMPORT_QUESTIONS]:     <OneTapImportQuestionsScreen onSignOut={handleSignOut} onBack={backToMenu} />,
+    [ROUTES.EDIT_QUESTIONS]:       <EditQuestionsScreen         onSignOut={handleSignOut} onBack={backToMenu} />,
 
     // NEW: BLS Test + Pre/Post (back → Admin Home)
-    blsTest:             <BLSTestScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    preTestQuestions:    <PreTestQuestionsScreen onBack={backToMenu} onNavigate={safeNavigate} />,
-    postTestQuestions:   <PostTestQuestionsScreen onBack={backToMenu} onNavigate={safeNavigate} />,
-    blsChecklist:        <BLSChecklistScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    blsChecklistEdit:    <BLSChecklistEditScreen onSignOut={handleSignOut} onBack={backToMenu} onNavigate={safeNavigate} />,
-    blsResults:          <BLSResultsScreen onSignOut={handleSignOut} onBack={backToMenu} onNavigate={safeNavigate} />,
-    quizResults:         <QuizResultsScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    oneManCPR:           <OneManCPR onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    twoManCPR:           <TwoManCPR onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    infantCPR:           <InfantCPR onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    adultChoking:        <AdultChoking onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
-    infantChoking:       <InfantChoking onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.BLS_TEST]:             <BLSTestScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.PRE_TEST_QUESTIONS]:    <PreTestQuestionsScreen onBack={backToMenu} onNavigate={safeNavigate} />,
+    [ROUTES.POST_TEST_QUESTIONS]:   <PostTestQuestionsScreen onBack={backToMenu} onNavigate={safeNavigate} />,
+    [ROUTES.BLS_CHECKLIST]:        <BLSChecklistScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.BLS_CHECKLIST_EDIT]:    <BLSChecklistEditScreen onSignOut={handleSignOut} onBack={backToMenu} onNavigate={safeNavigate} />,
+    [ROUTES.BLS_RESULTS]:          <BLSResultsScreen onSignOut={handleSignOut} onBack={backToMenu} onNavigate={safeNavigate} />,
+    [ROUTES.QUIZ_RESULTS]:         <QuizResultsScreen onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.ONE_MAN_CPR]:           <OneManCPR onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.TWO_MAN_CPR]:           <TwoManCPR onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.INFANT_CPR]:           <InfantCPR onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.ADULT_CHOKING]:        <AdultChoking onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
+    [ROUTES.INFANT_CHOKING]:       <InfantChoking onSignOut={handleSignOut} onBack={goHome} onNavigate={safeNavigate} />,
 
-    staffHome:   <StaffHomeScreen onSignOut={handleSignOut} profile={profile} onNavigate={safeNavigate} />,
-    userHome:    <UserHomeScreen  onSignOut={handleSignOut} profile={profile} onNavigate={safeNavigate} />,
+    [ROUTES.STAFF_HOME]:   <StaffHomeScreen onSignOut={handleSignOut} profile={profile} onNavigate={safeNavigate} />,
+    [ROUTES.USER_HOME]:    <UserHomeScreen  onSignOut={handleSignOut} profile={profile} onNavigate={safeNavigate} />,
   }), [handleSignOut, safeNavigate, goHome, backToMenu, profile]);
 
   const renderScreen = useCallback(() => {
@@ -515,14 +502,13 @@ export default function App() {
       );
     }
     const r = role();
-    const allowed = ALLOWED[r] || ALLOWED.user;
-    if (!allowed.has(screen)) return PAGES[homeFor(r)];
+    if (!hasPermission(r, screen)) return PAGES[getHomeScreen(r)];
     return PAGES[screen] || (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: "#f5ead1" }}>No page registered for: {String(screen)}</Text>
       </View>
     );
-  }, [screen, isLoggingIn, loginError, handleLogin, role, ALLOWED, homeFor, PAGES]);
+  }, [screen, isLoggingIn, loginError, handleLogin, role, PAGES]);
 
   return (
     <ErrorBoundary>

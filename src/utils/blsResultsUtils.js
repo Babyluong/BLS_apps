@@ -109,28 +109,20 @@ export const getChecklistDisplayName = (checklistType) => {
 
 // Process questions from database
 export const processQuestionsFromDatabase = (data, isPostTest = false) => {
-  if (!data || !Array.isArray(data)) return [];
-  
-  return data.map((item, index) => {
-    const question = item.question || `Question ${index + 1}`;
-    const choices = item.choices || [];
-    const correctAnswer = item.correct_answer;
-    const userAnswer = item.user_answer;
-    
+  if (!data || !Array.isArray(data)) {
     return {
-      id: item.id || index,
-      question,
-      choices: choices.map((choice, choiceIndex) => ({
-        id: choiceIndex,
-        text: choice,
-        isCorrect: choiceIndex === correctAnswer,
-        isUserAnswer: choiceIndex === userAnswer
-      })),
-      correctAnswer,
-      userAnswer,
-      isCorrect: userAnswer === correctAnswer
+      pretestStats: [],
+      posttestStats: [],
+      quizByUser: {}
     };
-  });
+  }
+  
+  // For now, return empty stats since we don't have question-level data
+  return {
+    pretestStats: [],
+    posttestStats: [],
+    quizByUser: {}
+  };
 };
 
 // Show highest scorers modal
@@ -139,22 +131,20 @@ export const showHighestScorers = (category, allResults, activeTab, setSelectedC
     const testType = activeTab === 'pretest' ? 'preTest' : 'postTest';
     const scoreField = testType === 'preTest' ? 'preTestScore' : 'postTestScore';
     
-    console.log('🔍 DEBUG: showHighestScorers called', { category, testType, scoreField });
-    console.log('🔍 DEBUG: allResults length:', allResults.length);
+    // console.log('🔍 DEBUG: showHighestScorers called', { category, testType, scoreField });
+    // console.log('🔍 DEBUG: allResults length:', allResults.length);
     
     const categoryResults = allResults.filter(r => r.category === category);
-    console.log('🔍 DEBUG: categoryResults length:', categoryResults.length);
+    // console.log('🔍 DEBUG: categoryResults length:', categoryResults.length);
     
     // Filter participants who actually took the test
     const testParticipants = categoryResults.filter(r => r[scoreField] !== null && r[scoreField] !== undefined);
-    console.log('🔍 DEBUG: testParticipants length:', testParticipants.length);
+    // console.log('🔍 DEBUG: testParticipants length:', testParticipants.length);
     
     if (testParticipants.length === 0) {
-      Alert.alert(
-        `Top ${category === 'clinical' ? 'Clinical' : 'Non-Clinical'} Scorers`,
-        `No ${category} participants have taken the ${testType === 'preTest' ? 'pre-test' : 'post-test'} yet.`,
-        [{ text: 'OK' }]
-      );
+      // Instead of alert, set a message in the modal
+      setSelectedCategory(`No ${category} participants have taken the ${testType === 'preTest' ? 'pre-test' : 'post-test'} yet.`);
+      setShowParticipantModal([]);
       return;
     }
     
@@ -164,25 +154,37 @@ export const showHighestScorers = (category, allResults, activeTab, setSelectedC
     // Get top 3
     const top3 = sortedParticipants.slice(0, 3);
     
-    console.log('🔍 DEBUG: Top 3 participants:', top3.map(p => ({ name: p.participantName, score: p[scoreField] })));
+    // console.log('🔍 DEBUG: Top 3 participants:', top3.map(p => ({ name: p.participantName, score: p[scoreField] })));
     
     // Set the filtered results and show modal
     setSelectedCategory(`Top 3 ${category === 'clinical' ? 'Clinical' : 'Non-Clinical'} Scorers`);
     setShowParticipantModal(top3);
     
   } catch (error) {
-    console.error('❌ Error in showHighestScorers:', error);
-    Alert.alert('Error', 'Failed to load highest scorers. Please try again.');
+    // console.error('❌ Error in showHighestScorers:', error);
+    setSelectedCategory('Error: Failed to load highest scorers');
+    setShowParticipantModal([]);
   }
 };
 
 // Calculate dashboard statistics
 export const calculateDashboardStats = (allResults) => {
+<<<<<<< HEAD
   console.log("🔍 DEBUG: calculateDashboardStats called with allResults.length:", allResults.length);
   
   // Return empty stats if no results
   if (!allResults || allResults.length === 0) {
     console.log("🔍 DEBUG: No results found, returning empty stats");
+=======
+  // alert(`🔍 DEBUG: calculateDashboardStats called with allResults.length: ${allResults.length}`);
+  // console.log("🔍 DEBUG: calculateDashboardStats called with allResults:", allResults);
+  // console.log("🔍 DEBUG: allResults.length:", allResults.length);
+  // console.log("🔍 DEBUG: allResults sample:", allResults.slice(0, 2));
+  
+  // EMERGENCY FIX - Force the counts to work
+  if (allResults.length > 0) {
+    // alert(`🔍 EMERGENCY FIX: Forcing counts - totalParticipants: ${allResults.length}`);
+>>>>>>> 6c028a5bb4982a51aa324620907df7dfc0f76552
     return {
       totalParticipants: 0,
       clinicalCount: 0,
@@ -246,6 +248,10 @@ export const calculateDashboardStats = (allResults) => {
   };
 
   return {
+    totalParticipants,
+    clinicalCount: clinicalResults.length,
+    nonClinicalCount: nonClinicalResults.length,
+    certifiedCount: allResults.filter(r => r.certified === true).length,
     highestScores,
     passFailStats,
     questionAnalysis: []
@@ -253,10 +259,8 @@ export const calculateDashboardStats = (allResults) => {
 };
 
 // Export to CSV
-export const exportToCSV = async (getFilteredResults, getNewDashboardStats) => {
+export const exportToCSV = (results, filename) => {
   try {
-    const results = getFilteredResults();
-    const stats = getNewDashboardStats();
     
     // Create CSV headers
     const headers = [
@@ -304,13 +308,12 @@ export const exportToCSV = async (getFilteredResults, getNewDashboardStats) => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `bls_results_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `${filename || 'bls_results'}_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
     
-    Alert.alert('Success', 'Results exported to CSV successfully!');
+    console.log('Results exported to CSV successfully!');
   } catch (error) {
     console.error('Error exporting to CSV:', error);
-    Alert.alert('Error', 'Failed to export results. Please try again.');
   }
 };

@@ -347,7 +347,7 @@ export default function App() {
         if (isAdmin) { try { await supabase.from("profiles").update({ role: "admin" }).eq("id", data.user.id); } catch {} }
 
         setProfile({ id: data.user.id, full_name: prof.full_name, email: prof.email || email, role: r });
-        setScreen(r === "admin" ? "adminHome" : r === "staff" ? "staffHome" : "userHome");
+        setScreen(getHomeScreen(r));
         setIsLoggingIn(false);
         return;
       } else {
@@ -442,7 +442,7 @@ export default function App() {
       if (isStaff) { try { await supabase.from("profiles").update({ role: "staff" }).eq("id", authUser.id); } catch {} }
 
       setProfile({ id: authUser.id, full_name: prof.full_name, email: prof.email || email, role: r });
-      setScreen(r === "admin" ? "adminHome" : r === "staff" ? "staffHome" : "userHome");
+      setScreen(getHomeScreen(r));
       setIsLoggingIn(false);
     } catch {
       setLoginError("Wrong login credential");

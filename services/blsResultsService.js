@@ -7,6 +7,8 @@ export class BLSResultsService {
    * @param {Object} results - The BLS assessment results
    * @param {number} results.preTestScore - Pre-test score (0-30)
    * @param {number} results.postTestScore - Post-test score (0-30)
+   * @param {string} results.participantName - Participant name
+   * @param {string} results.participantIc - Participant IC number
    * @param {Object} results.checklistResults - Checklist pass/fail status
    * @param {Object} results.checklistDetails - Detailed checklist breakdown
    * @returns {Promise<Object>} - Saved result data
@@ -18,21 +20,34 @@ export class BLSResultsService {
         throw new Error('User not authenticated');
       }
 
+      // Get user profile to fetch jawatan data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('jawatan')
+        .eq('id', user.id)
+        .single();
+
+      // Determine jawatan from profile data
+      const jawatan = profile?.jawatan || 'Unknown Position';
+
       // Prepare the data for insertion
       const resultData = {
         user_id: user.id,
-        pre_test_score: results.preTestScore,
-        post_test_score: results.postTestScore,
-        one_man_cpr_pass: results.checklistResults.oneManCprPass || false,
-        two_man_cpr_pass: results.checklistResults.twoManCprPass || false,
-        adult_choking_pass: results.checklistResults.adultChokingPass || false,
-        infant_choking_pass: results.checklistResults.infantChokingPass || false,
-        infant_cpr_pass: results.checklistResults.infantCprPass || false,
-        one_man_cpr_details: results.checklistDetails['one-man-cpr'] || { performed: [], notPerformed: [] },
-        two_man_cpr_details: results.checklistDetails['two-man-cpr'] || { performed: [], notPerformed: [] },
-        adult_choking_details: results.checklistDetails['adult-choking'] || { performed: [], notPerformed: [] },
-        infant_choking_details: results.checklistDetails['infant-choking'] || { performed: [], notPerformed: [] },
-        infant_cpr_details: results.checklistDetails['infant-cpr'] || { performed: [], notPerformed: [] }
+        participant_name: results.participantName || 'Unknown',
+        participant_ic: results.participantIc || null,
+        jawatan: jawatan,
+        pre_test_score: results.preTestScore || 0,
+        post_test_score: results.postTestScore || 0,
+        one_man_cpr_pass: results.checklistResults?.oneManCprPass || false,
+        two_man_cpr_pass: results.checklistResults?.twoManCprPass || false,
+        adult_choking_pass: results.checklistResults?.adultChokingPass || false,
+        infant_choking_pass: results.checklistResults?.infantChokingPass || false,
+        infant_cpr_pass: results.checklistResults?.infantCprPass || false,
+        one_man_cpr_details: results.checklistDetails?.['one-man-cpr'] || { performed: [], notPerformed: [] },
+        two_man_cpr_details: results.checklistDetails?.['two-man-cpr'] || { performed: [], notPerformed: [] },
+        adult_choking_details: results.checklistDetails?.['adult-choking'] || { performed: [], notPerformed: [] },
+        infant_choking_details: results.checklistDetails?.['infant-choking'] || { performed: [], notPerformed: [] },
+        infant_cpr_details: results.checklistDetails?.['infant-cpr'] || { performed: [], notPerformed: [] }
       };
 
       const { data, error } = await supabase
@@ -63,13 +78,16 @@ export class BLSResultsService {
         throw new Error('User not authenticated');
       }
 
-      // First, get the BLS results
+      // Get the BLS results
       const { data: results, error: resultsError } = await supabase
         .from('bls_results')
         .select(`
           id,
           created_at,
           user_id,
+          participant_name,
+          participant_ic,
+          jawatan,
           pre_test_score,
           post_test_score,
           one_man_cpr_pass,
@@ -84,44 +102,13 @@ export class BLSResultsService {
           infant_cpr_details
         `)
         .eq('user_id', user.id)
-        .not('pre_test_score', 'is', null)
-        .not('post_test_score', 'is', null)
         .order('created_at', { ascending: false });
 
       if (resultsError) {
         throw resultsError;
       }
 
-      if (!results || results.length === 0) {
-        return [];
-      }
-
-      // Then, get the user profile information
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      // If profile doesn't exist, create a default one
-      const profileData = profile || {
-        full_name: 'Unknown User',
-        id_number: 'N/A'
-      };
-
-      // Ensure all required fields exist with fallback values
-      const safeProfileData = {
-        full_name: profileData.full_name || 'Unknown User',
-        id_number: profileData.id_number || 'N/A'
-      };
-
-      // Combine the data
-      const combinedResults = results.map(result => ({
-        ...result,
-        profiles: safeProfileData
-      }));
-
-      return combinedResults;
+      return results || [];
     } catch (error) {
       console.error('Error fetching BLS results:', error);
       throw error;
@@ -134,13 +121,16 @@ export class BLSResultsService {
    */
   static async getAllBLSResults() {
     try {
-      // First, get all BLS results
+      // Get all BLS results
       const { data: results, error: resultsError } = await supabase
         .from('bls_results')
         .select(`
           id,
           created_at,
           user_id,
+          participant_name,
+          participant_ic,
+          jawatan,
           pre_test_score,
           post_test_score,
           one_man_cpr_pass,
@@ -154,54 +144,108 @@ export class BLSResultsService {
           infant_choking_details,
           infant_cpr_details
         `)
-        .not('pre_test_score', 'is', null)
-        .not('post_test_score', 'is', null)
         .order('created_at', { ascending: false });
 
       if (resultsError) {
         throw resultsError;
       }
 
-      if (!results || results.length === 0) {
+      return results || [];
+    } catch (error) {
+      console.error('Error fetching all BLS results:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get BLS results with profile information
+   * @param {boolean} isAdmin - Whether the user is an admin
+   * @returns {Promise<Array>} - Array of BLS results with profile data
+   */
+  static async getBLSResultsWithProfiles(isAdmin = false) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get BLS results
+      let resultsQuery = supabase
+        .from('bls_results')
+        .select(`
+          id,
+          user_id,
+          participant_name,
+          participant_ic,
+          pre_test_score,
+          post_test_score,
+          one_man_cpr_pass,
+          two_man_cpr_pass,
+          adult_choking_pass,
+          infant_choking_pass,
+          infant_cpr_pass,
+          created_at
+        `)
+        .order('created_at', { ascending: false });
+
+      if (!isAdmin) {
+        resultsQuery = resultsQuery.eq('user_id', user.id);
+      }
+
+      const { data: blsResults, error: resultsError } = await resultsQuery;
+      if (resultsError) {
+        throw resultsError;
+      }
+
+      if (!blsResults || blsResults.length === 0) {
         return [];
       }
 
-      // Get unique user IDs
-      const userIds = [...new Set(results.map(result => result.user_id))];
-
-      // Get all profiles for these users
+      // Get user profiles for jawatan/category information only
+      const userIds = [...new Set(blsResults.map(result => result.user_id))];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, jawatan, job_position, gred')
         .in('id', userIds);
 
       if (profilesError) {
         console.warn('Error fetching profiles:', profilesError);
       }
 
-      // Create a map of user profiles
+      // Create profile map for jawatan only
       const profileMap = new Map();
-      if (profiles) {
-        profiles.forEach(profile => {
-          profileMap.set(profile.id, {
-            full_name: profile.full_name || 'Unknown User',
-            id_number: profile.id_number || 'N/A'
-          });
-        });
-      }
+      (profiles || []).forEach(profile => {
+        profileMap.set(profile.id, profile);
+      });
 
-      // Combine the data
-      const combinedResults = results.map(result => ({
-        ...result,
-        profiles: profileMap.get(result.user_id) || {
-          full_name: 'Unknown User',
-          id_number: 'N/A'
-        }
-      }));
+      // Transform the data to match the expected format
+      const transformedResults = blsResults.map(result => {
+        const profile = profileMap.get(result.user_id);
+        const jawatan = profile?.jawatan || profile?.job_position || profile?.gred || 'N/A';
+        
+        return {
+          id: result.id,
+          participantId: result.user_id,
+          participantName: result.participant_name || 'Unknown',
+          participantIc: result.participant_ic || 'N/A',
+          jawatan: jawatan,
+          preTestScore: result.pre_test_score || 0,
+          postTestScore: result.post_test_score || 0,
+          preTestPercentage: Math.round(((result.pre_test_score || 0) / 30) * 100),
+          postTestPercentage: Math.round(((result.post_test_score || 0) / 30) * 100),
+          oneManCprPass: result.one_man_cpr_pass,
+          twoManCprPass: result.two_man_cpr_pass,
+          adultChokingPass: result.adult_choking_pass,
+          infantChokingPass: result.infant_choking_pass,
+          infantCprPass: result.infant_cpr_pass,
+          date: new Date(result.created_at).toLocaleDateString('en-MY'),
+          createdAt: result.created_at
+        };
+      });
 
-      return combinedResults;
+      return transformedResults;
     } catch (error) {
-      console.error('Error fetching all BLS results:', error);
+      console.error('Error fetching BLS results with profiles:', error);
       throw error;
     }
   }

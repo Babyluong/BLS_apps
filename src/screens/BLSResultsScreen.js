@@ -252,7 +252,7 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
           created_at: result.created_at,
           updated_at: result.updated_at
         };
-      }); // Show all participants
+      });
       
       console.log("Processed results:", processedResults.length, "participants");
       
@@ -924,4 +924,3 @@ export default function BLSResultsScreen({ onBack, onSignOut, onNavigate }) {
     </LuxuryShell>
   );
 }
-

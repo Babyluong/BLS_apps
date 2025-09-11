@@ -160,7 +160,7 @@ export default function App() {
     const r = role();
     const allowed = ALLOWED[r] || ALLOWED.user;
     if (!allowed.has(target)) {
-      Alert.alert("No access", "You don't have permission to open that page.");
+      CustomAlert("No access", "You don't have permission to open that page.");
       setScreen(homeFor(r));
       return;
     }
